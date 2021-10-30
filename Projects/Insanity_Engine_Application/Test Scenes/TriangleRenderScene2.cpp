@@ -17,7 +17,8 @@ static DX11::StaticMeshHandle mesh2;
 static DX11::StaticMeshHandle mesh3;
 static DX11::StaticMeshHandle mesh4;
 static DX11::StaticMeshHandle mesh5;
-static DX11::CameraHandle camera;
+static InsanityEngine::DX11::Window<DX11::Renderer>* g_window;
+//static DX11::CameraHandle camera;
 
 static std::shared_ptr<Resources::Mesh> meshRes;
 static std::shared_ptr<Resources::Texture> tex;
@@ -42,9 +43,9 @@ static bool rightPressed = false;
 
 static bool ctrlPressed = false;
 
-void TriangleRenderSetup2(InsanityEngine::DX11::Device& device, InsanityEngine::DX11::Renderer& renderer, InsanityEngine::DX11::Window& window)
+void TriangleRenderSetup2(InsanityEngine::DX11::Device& device, InsanityEngine::DX11::Window<DX11::Renderer>& window)
 {
-
+    g_window = &window;
     D3D11_SAMPLER_DESC samplerDesc;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -64,8 +65,9 @@ void TriangleRenderSetup2(InsanityEngine::DX11::Device& device, InsanityEngine::
     HRESULT hr = device.GetDevice()->CreateSamplerState(&samplerDesc, &samplerState);
     if(FAILED(hr))
     {
-        throw HRESULTException("Failed to create sampler state", hr);
+        throw Debug::Exceptions::HRESULTException("Failed to create sampler state", hr);
     }
+
 
 
     shader = std::make_shared<Resources::Shader>(Resources::CreateShader(device.GetDevice(), L"Resources/Shaders/VertexShader.hlsl", L"Resources/Shaders/PixelShader.hlsl"));
@@ -94,11 +96,11 @@ void TriangleRenderSetup2(InsanityEngine::DX11::Device& device, InsanityEngine::
     mat5 = std::make_shared<Resources::StaticMesh::Material>(Resources::StaticMesh::CreateMaterial(device.GetDevice(), shader, tex2, { 1, 1 ,0, 1 }));
 
 
-    mesh = renderer.CreateMesh(StaticMesh::MeshObjectData(meshRes, mat));
-    mesh2 = renderer.CreateMesh(StaticMesh::MeshObjectData(meshRes, mat2));
-    mesh3 = renderer.CreateMesh(StaticMesh::MeshObjectData(meshRes, mat3));
-    mesh4 = renderer.CreateMesh(StaticMesh::MeshObjectData(meshRes, mat4));
-    mesh5 = renderer.CreateMesh(StaticMesh::MeshObjectData(meshRes, mat5));
+    mesh =  window.GetRenderer().CreateMesh(StaticMesh::MeshObjectData(meshRes, mat));
+    mesh2 = window.GetRenderer().CreateMesh(StaticMesh::MeshObjectData(meshRes, mat2));
+    mesh3 = window.GetRenderer().CreateMesh(StaticMesh::MeshObjectData(meshRes, mat3));
+    mesh4 = window.GetRenderer().CreateMesh(StaticMesh::MeshObjectData(meshRes, mat4));
+    mesh5 = window.GetRenderer().CreateMesh(StaticMesh::MeshObjectData(meshRes, mat5));
 
     mesh.SetPosition({ 0, 0, 2 });
     mesh2.SetPosition({ 1, 0, 2 });
@@ -112,65 +114,11 @@ void TriangleRenderSetup2(InsanityEngine::DX11::Device& device, InsanityEngine::
     //mesh5.GetMaterial()->color = { 1, 1 ,0, 1 };
 
 
-    ComPtr<ID3D11Resource> resource;
-    window.GetBackBuffer()->GetResource(&resource);
 
-    ComPtr<ID3D11Texture2D> texture;
-    resource.As(&texture);
-
-    D3D11_TEXTURE2D_DESC textureDesc = {};
-    texture->GetDesc(&textureDesc);
-
-    textureDesc.MipLevels = 0;
-    textureDesc.ArraySize = 1;
-    textureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    textureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-
-    ComPtr<ID3D11Texture2D> depthStencilTexture;
-    hr = device.GetDevice()->CreateTexture2D(&textureDesc, nullptr, &depthStencilTexture);
-
-    if(FAILED(hr))
-    {
-        throw HRESULTException("Failed to create depth stencil texture", hr);
-    }
-
-    D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilDesc;
-    depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    depthStencilDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-    depthStencilDesc.Flags = 0;
-    depthStencilDesc.Texture2D.MipSlice = 0;
-
-    ComPtr<ID3D11DepthStencilView> depthStencilView;
-    hr = device.GetDevice()->CreateDepthStencilView(depthStencilTexture.Get(), &depthStencilDesc, &depthStencilView);
-
-    if(FAILED(hr))
-    {
-        throw HRESULTException("Failed to create depth stencil view", hr);
-    }
-
-
-    D3D11_DEPTH_STENCIL_DESC desc{};
-
-    desc.DepthEnable = true;
-    desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    desc.DepthFunc = D3D11_COMPARISON_LESS;
-    desc.StencilEnable = false;
-    desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
-    desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-    desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-    desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-    desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-    desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-    desc.BackFace = desc.FrontFace;
-
-    ComPtr<ID3D11DepthStencilState> depthStencilState;
-    device.GetDevice()->CreateDepthStencilState(&desc, &depthStencilState);
-
-
-    CameraData data(window.GetBackBuffer(), depthStencilView, depthStencilState);
-    data.clipPlane.Near = 0.0001f;
-    data.clipPlane.Far = 1000.f;
-    camera = renderer.CreateCamera(data);
+    //CameraData data(window.GetBackBuffer(), depthStencilView, depthStencilState);
+    //data.clipPlane.Near = 0.0001f;
+    //data.clipPlane.Far = 1000.f;
+    //camera = renderer.CreateCamera(data);
 }
 void TriangleRenderInput2(SDL_Event event)
 {
@@ -245,7 +193,6 @@ void TriangleRenderInput2(SDL_Event event)
 }
 void TriangleRenderUpdate2(float dt)
 {
-
     Vector2f axis;
     Vector3f cameraDirection;
     Vector3f cameraRotation;
@@ -305,8 +252,9 @@ void TriangleRenderUpdate2(float dt)
         }
     }
 
-    camera.SetPosition(camera.GetPosition() + cameraDirection * 20.f * dt);
-    camera.SetRotation(camera.GetRotation() * Quaternion<float>(cameraRotation, Degrees(20.f * dt)));
+    auto& cameraData = g_window->GetRenderer().GetCamera();
+    cameraData.position = cameraData.position + cameraDirection * 20.f * dt;
+    cameraData.rotation = cameraData.rotation * Quaternion<float>(cameraRotation, Degrees(20.f * dt));
 
     mesh.Rotate(Quaternion<float>(Vector3f(axis, 0), Degrees<float>(90.f * dt)));
     mesh2.Rotate(Quaternion<float>(Vector3f(axis, 0), Degrees<float>(90.f * dt)));
@@ -336,5 +284,4 @@ void TriangleRenderShutdown2()
     mesh3 = nullptr;
     mesh4 = nullptr;
     mesh5 = nullptr;
-    camera = nullptr;
 }

@@ -4,7 +4,10 @@
 namespace InsanityEngine::DX11
 {
     class Device;
+
+    template<class Renderer>
     class Window;
+
     class Renderer;
 }
 
@@ -15,12 +18,12 @@ namespace InsanityEngine::Application
     {
     private:
         DX11::Device& m_device;
-        DX11::Window& m_window;
-        DX11::Renderer& m_renderer;
+        DX11::Window<DX11::Renderer>& m_window;
+        //DX11::Renderer& m_renderer;
 
         bool m_running = true;
     public:
-        Application(DX11::Device& device, DX11::Window& window, DX11::Renderer& renderer);
+        Application(DX11::Device& device, DX11::Window<DX11::Renderer>& window);
         Application(const Application& other) = delete;
         Application(Application&& other) noexcept = delete;
 
@@ -33,7 +36,7 @@ namespace InsanityEngine::Application
         void Quit();
 
     public:
-        DX11::Window& GetWindow() const { return m_window; }
+        DX11::Window<DX11::Renderer>& GetWindow() const { return m_window; }
     };
 
     extern int RunApplication();

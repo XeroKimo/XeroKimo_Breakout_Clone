@@ -15,17 +15,16 @@ using namespace InsanityEngine::Math::Types;
 
 namespace InsanityEngine::Application
 {
-    Application::Application(DX11::Device& device, DX11::Window& window, DX11::Renderer& renderer) :
+    Application::Application(DX11::Device& device, DX11::Window<DX11::Renderer>& window) :
         m_device(device),
-        m_window(window),
-        m_renderer(renderer)
+        m_window(window)
     {
     }
 
     int Application::Run()
     {
         
-        TriangleRenderSetup2(m_device, m_renderer, m_window);
+        TriangleRenderSetup2(m_device, m_window);
         //TriangleRenderSetup(m_device, m_window);
 
         std::chrono::time_point previous = std::chrono::steady_clock::now();
@@ -51,7 +50,9 @@ namespace InsanityEngine::Application
                 TriangleRenderUpdate2(delta);
                 //TriangleRender(m_device, m_window);
                 //m_window.Present();
-                m_window.Draw();
+                //m_window.Draw();
+
+                m_window.GetRenderer().Draw();
             }
         }
 
@@ -74,11 +75,10 @@ namespace InsanityEngine::Application
         try
         {
             DX11::Device device;
-            DX11::Renderer renderer{ device };
-            DX11::Window window{ "Insanity Engine", { 1280.f, 720.f }, device, renderer };
+            DX11::Window<DX11::Renderer> window{ "Insanity Engine", { 1280.f, 720.f }, device };
 
 
-            Application app(device, window, renderer);
+            Application app(device, window);
             app.Run();
         }
         catch(std::exception e)
