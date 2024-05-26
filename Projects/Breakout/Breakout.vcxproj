@@ -24,7 +24,7 @@
     <ProjectGuid>{d88a4677-3684-4d3e-bf8f-bf8adce5f96c}</ProjectGuid>
     <RootNamespace>DeluBulletHell</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>DeluCardMatch</ProjectName>
+    <ProjectName>Breakout</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -19,7 +19,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xkMathTest", "Projects\xkMa
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xkMath", "Projects\xkMath\xkMath.vcxproj", "{68F6959A-8C53-4752-9CDE-F5FCAEA62413}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DeluCardMatch", "Projects\DeluCardMatch\DeluCardMatch.vcxproj", "{D88A4677-3684-4D3E-BF8F-BF8ADCE5F96C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Breakout", "Projects\Breakout\Breakout.vcxproj", "{D88A4677-3684-4D3E-BF8F-BF8ADCE5F96C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
