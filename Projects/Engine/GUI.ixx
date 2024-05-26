@@ -17,16 +17,10 @@ import xk.Math.Algorithms;
 import SDL2pp;
 import :Renderer;
 
-
-//namespace DeluEngine
-//{
-//	export class Renderer;
-//}
+using namespace xk::Math::Aliases;
 
 namespace DeluEngine::GUI
 {
-	//using namespace xk::Math::Aliases;
-
 	export struct AbsolutePosition
 	{
 		xk::Math::Aliases::Vector2 value;
@@ -747,7 +741,7 @@ namespace DeluEngine::GUI
 		std::erase(m_engine->rootElements, this);
 	}
 
-	AbsoluteSize DeluEngine::GUI::UIElement::GetRendererSize() const noexcept
+	AbsoluteSize UIElement::GetRendererSize() const noexcept
 	{
 		return m_engine->GetFrameSize();
 	}
@@ -755,6 +749,13 @@ namespace DeluEngine::GUI
 	void UIElementDeleter::operator()(UIElement* element)
 	{
 		element->m_engine->pendingDeletedElements.push_back(element);
+	}
+
+	export void SetAnchors(UIElement& element, xk::Math::Aliases::Vector2 minAnchor, xk::Math::Aliases::Vector2 maxAnchor)
+	{
+		const xk::Math::Aliases::Vector2 size = maxAnchor - minAnchor;
+		element.SetLocalSizeAndRepresentation(RelativeSize{ size });
+		element.SetLocalPositionAndRepresentation(RelativePosition{ minAnchor + xk::Math::Aliases::Vector2{ size.X() * element.GetPivot().X(), size.Y() * element.GetPivot().Y() } });
 	}
 
 	export void ProcessEvent(GUIEngine& engine, const SDL2pp::Event& event, xk::Math::Aliases::Vector2 windowSize);

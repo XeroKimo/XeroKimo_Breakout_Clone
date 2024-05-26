@@ -14,6 +14,7 @@ module;
 #include <iostream>
 #include <type_traits>
 #include <optional>
+#include <span>
 
 export module ECS;
 export import xk.Math.Matrix;
@@ -70,344 +71,6 @@ import xk.AnyPtr;
 //	export class GameObject;
 //	export class ObjectAllocator;
 //	export class Scene;
-//
-//	export enum ReparentLogic
-//	{
-//		KeepWorldTransform,
-//		KeepLocalTransform
-//	};
-//
-//	struct Transform
-//	{
-//		xk::Math::Vector<float, 2> position;
-//		xk::Math::Degree<float> rotation;
-//
-//		Transform& operator+=(const Transform& rh)
-//		{
-//			position += rh.position;
-//			rotation += rh.rotation;
-//			return *this;
-//		}
-//
-//		Transform& operator-=(const Transform& rh)
-//		{
-//			position -= rh.position;
-//			rotation -= rh.rotation;
-//			return *this;
-//		}
-//
-//		friend Transform operator+(Transform lh, const Transform& rh)
-//		{
-//			return lh += rh;
-//		}
-//
-//		friend Transform operator-(Transform lh, const Transform& rh)
-//		{
-//			return lh -= rh;
-//		}
-//	};
-//
-//
-//	export class TransformNode
-//	{
-//	private:
-//		TransformNode* m_parent = nullptr;
-//		std::vector<TransformNode*> m_children;
-//		Transform m_localTransform;
-//
-//		mutable bool m_worldTransformIsDirty = true;
-//		mutable Transform m_cachedWorldTransform;
-//	public:
-//		AnyPtr userData;
-//
-//	public:
-//		~TransformNode()
-//		{
-//			while (!m_children.empty())
-//			{
-//				m_children.back()->SetParent(m_parent, ReparentLogic::KeepLocalTransform);
-//			}
-//			SetParent(nullptr, ReparentLogic::KeepLocalTransform);
-//		}
-//
-//	public:
-//		xk::Math::Vector<float, 2> GetLocalPosition() const noexcept { return m_localTransform.position; }
-//		xk::Math::Degree<float> GetLocalRotation() const noexcept { return m_localTransform.rotation; }
-//		Transform GetLocalTransform() const noexcept { return m_localTransform; }
-//
-//		void SetLocalPosition(xk::Math::Vector<float, 2> position) noexcept 
-//		{ 
-//			m_localTransform.position = position; 
-//			m_worldTransformIsDirty = true;
-//			SetChildrenCachedWorldTransformDirty();
-//		}
-//		void SetLocalRotation(xk::Math::Degree<float> rotation) noexcept 
-//		{ 
-//			m_localTransform.rotation = rotation;
-//			m_worldTransformIsDirty = true;
-//			SetChildrenCachedWorldTransformDirty();
-//		}
-//		void SetLocalTransform(Transform transform) noexcept 
-//		{
-//			m_localTransform = transform;
-//			m_worldTransformIsDirty = true;
-//			SetChildrenCachedWorldTransformDirty();
-//		}
-//
-//		xk::Math::Vector<float, 2> GetWorldPosition() const noexcept 
-//		{ 
-//			RecalculateWorldTransform();
-//			return m_cachedWorldTransform.position;
-//		}
-//		xk::Math::Degree<float> GetWorldRotation() const noexcept 
-//		{
-//			RecalculateWorldTransform();
-//			return m_cachedWorldTransform.rotation;
-//		}
-//		Transform GetWorldTransform() const noexcept 
-//		{
-//			RecalculateWorldTransform();
-//			return m_cachedWorldTransform;
-//		}
-//
-//		void SetWorldPosition(xk::Math::Vector<float, 2> position) noexcept 
-//		{ 
-//			SetLocalPosition(position - GetParentWorldPosition());
-//		}
-//		void SetWorldRotation(xk::Math::Degree<float> rotation) noexcept 
-//		{ 
-//			SetLocalRotation(rotation - GetParentWorldRotation());
-//		}
-//		void SetWorldTransform(Transform transform) noexcept 
-//		{ 
-//			SetLocalTransform(transform - GetParentWorldTransform());
-//		}
-//
-//		void SetParent(TransformNode* newParent, ReparentLogic logic = ReparentLogic::KeepWorldTransform)
-//		{
-//			DetectSelfParenting(newParent);
-//			DetectCycle(newParent);
-//
-//			auto Reparent = [newParent, this]
-//				{
-//					if (m_parent)
-//						std::erase(m_parent->m_children, this);
-//
-//					auto m_parentProxy = xk::RollbackOnFailure(m_parent, newParent, [this](auto, auto) { if (m_parent) m_parent->m_children.push_back(this); });
-//
-//					if (m_parentProxy.value)
-//						m_parentProxy.value->m_children.push_back(this);
-//				};
-//
-//			switch (logic)
-//			{
-//			case ReparentLogic::KeepWorldTransform:
-//			{
-//				auto oldWorldTransform = GetWorldTransform();
-//				Reparent();
-//				SetWorldTransform(oldWorldTransform);
-//			}
-//				break;
-//			case ReparentLogic::KeepLocalTransform:
-//				Reparent();
-//				m_worldTransformIsDirty = true;
-//				SetChildrenCachedWorldTransformDirty();
-//				break;
-//			default:
-//				throw std::runtime_error("Unknown reparenting logic");
-//			}
-//		}
-//		TransformNode* GetParent() const noexcept { return m_parent; }
-//		std::vector<TransformNode*> GetChildren() const noexcept { return m_children; }
-//
-//	private:
-//		xk::Math::Vector<float, 2> GetParentWorldPosition() const noexcept
-//		{
-//			return GetParentWorldTransform().position;
-//		}
-//
-//		xk::Math::Degree<float> GetParentWorldRotation() const noexcept
-//		{
-//			return GetParentWorldTransform().rotation;
-//		}
-//
-//		Transform GetParentWorldTransform() const noexcept
-//		{
-//			return m_parent ? m_parent->GetWorldTransform() : Transform{};
-//		}
-//
-//		void DetectCycle(TransformNode* newParent)
-//		{
-//			for (TransformNode* p = newParent; p; p = p->m_parent)
-//			{
-//				if (p == this)
-//					throw std::runtime_error("Cyclic parenting detected and is not allowed");
-//			}
-//		}
-//
-//		void DetectSelfParenting(TransformNode* newParent)
-//		{
-//			if(newParent == this)
-//				throw std::runtime_error("Cannot parent to yourself");
-//		}
-//
-//		void SetChildrenCachedWorldTransformDirty()
-//		{
-//			for (TransformNode* child : m_children)
-//			{
-//				if (child->m_worldTransformIsDirty)
-//					continue;
-//
-//				child->m_worldTransformIsDirty = true;
-//				child->SetChildrenCachedWorldTransformDirty();
-//			}
-//		}
-//
-//		void RecalculateWorldTransform() const
-//		{
-//			if (m_worldTransformIsDirty)
-//			{
-//				m_cachedWorldTransform = GetParentWorldTransform() + GetLocalTransform();
-//				m_worldTransformIsDirty = false;
-//			}
-//		}
-//	};
-//
-//	export class WorldTransformProxy
-//	{
-//	private:
-//		class PositionProxy
-//		{
-//		private:
-//			TransformNode& m_transform;
-//
-//		public:
-//			PositionProxy(TransformNode& transform) :
-//				m_transform(transform)
-//			{
-//
-//			}
-//
-//			PositionProxy& operator=(const xk::Math::Vector<float, 2>& position) { m_transform.SetWorldPosition(position); return *this; }
-//			PositionProxy& operator=(const PositionProxy& position) { return operator=(position.GetValue()); }
-//
-//			PositionProxy& operator+=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() + position); }
-//			PositionProxy& operator+=(const PositionProxy& position) { return operator+=(position.GetValue()); }
-//
-//			PositionProxy& operator-=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() - position); }
-//			PositionProxy& operator-=(const PositionProxy& position) { return operator-=(position.GetValue()); }
-//
-//			xk::Math::Vector<float, 2> GetValue() const { return m_transform.GetWorldPosition(); }
-//			operator xk::Math::Vector<float, 2>() const { return GetValue(); }
-//		};
-//
-//		class RotationProxy
-//		{
-//		private:
-//			TransformNode& m_transform;
-//
-//		public:
-//			RotationProxy(TransformNode& transform) :
-//				m_transform(transform)
-//			{
-//
-//			}
-//
-//			RotationProxy& operator=(const xk::Math::Degree<float>& angle) { m_transform.SetWorldRotation(angle); return *this; }
-//			RotationProxy& operator=(const RotationProxy& angle) { return operator=(angle.GetValue()); }
-//
-//			RotationProxy& operator+=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() + angle); }
-//			RotationProxy& operator+=(const RotationProxy& angle) { return operator+=(angle.GetValue()); }
-//
-//			RotationProxy& operator-=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() - angle); }
-//			RotationProxy& operator-=(const RotationProxy& angle) { return operator-=(angle.GetValue()); }
-//
-//			xk::Math::Degree<float> GetValue() const { return m_transform.GetWorldRotation(); }
-//			operator xk::Math::Degree<float>() const { return GetValue(); }
-//		};
-//
-//	private:
-//		TransformNode& m_transform;
-//
-//	public:
-//		WorldTransformProxy(TransformNode& transform) :
-//			m_transform(transform)
-//		{
-//
-//		}
-//
-//		PositionProxy Position() { return { m_transform }; }
-//		RotationProxy Rotation() { return { m_transform }; }
-//		Transform GetValue() const { return m_transform.GetWorldTransform(); }
-//	};
-//
-//	export class LocalTransformProxy
-//	{
-//	private:
-//		class PositionProxy
-//		{
-//		private:
-//			TransformNode& m_transform;
-//
-//		public:
-//			PositionProxy(TransformNode& transform) :
-//				m_transform(transform)
-//			{
-//
-//			}
-//
-//			PositionProxy& operator=(const xk::Math::Vector<float, 2>& position) { m_transform.SetLocalPosition(position); return *this; }
-//			PositionProxy& operator=(const PositionProxy& position) { return operator=(position.GetValue()); }
-//
-//			PositionProxy& operator+=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() + position); }
-//			PositionProxy& operator+=(const PositionProxy& position) { return operator+=(position.GetValue()); }
-//
-//			PositionProxy& operator-=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() - position); }
-//			PositionProxy& operator-=(const PositionProxy& position) { return operator-=(position.GetValue()); }
-//
-//			xk::Math::Vector<float, 2> GetValue() const { return m_transform.GetLocalPosition(); }
-//			operator xk::Math::Vector<float, 2>() const { return GetValue(); }
-//		};
-//
-//		class RotationProxy
-//		{
-//		private:
-//			TransformNode& m_transform;
-//
-//		public:
-//			RotationProxy(TransformNode& transform) :
-//				m_transform(transform)
-//			{
-//
-//			}
-//
-//			RotationProxy& operator=(const xk::Math::Degree<float>& angle) { m_transform.SetLocalRotation(angle); return *this; }
-//			RotationProxy& operator=(const RotationProxy& angle) { return operator=(angle.GetValue()); }
-//
-//			RotationProxy& operator+=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() + angle); }
-//			RotationProxy& operator+=(const RotationProxy& angle) { return operator+=(angle.GetValue()); }
-//
-//			RotationProxy& operator-=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() - angle); }
-//			RotationProxy& operator-=(const RotationProxy& angle) { return operator-=(angle.GetValue()); }
-//
-//			xk::Math::Degree<float> GetValue() const { return m_transform.GetLocalRotation(); }
-//			operator xk::Math::Degree<float>() const { return GetValue(); }
-//		};
-//
-//	private:
-//		TransformNode& m_transform;
-//
-//	public:
-//		LocalTransformProxy(TransformNode& transform) :
-//			m_transform(transform)
-//		{
-//
-//		}
-//
-//		PositionProxy Position() { return { m_transform }; }
-//		RotationProxy Rotation() { return { m_transform }; }
-//		Transform GetValue() const { return m_transform.GetLocalTransform(); }
-//	};
 //
 //	export template<std::derived_from<Object> Ty>
 //	class UniqueObject
@@ -602,30 +265,6 @@ import xk.AnyPtr;
 //	protected:
 //		void SceneConstructor() {}
 //		void SceneDestructor() {}
-//	};
-//
-//	template<class DerivedSelf>
-//	class SceneTransform
-//	{
-//	private:
-//		TransformNode m_transform;
-//
-//	public:
-//		SceneTransform(const UserGameObjectInitializer& initializer);
-//
-//	public:
-//		virtual LocalTransformProxy LocalTransform() { return m_transform; }
-//		virtual WorldTransformProxy Transform() { return m_transform; }
-//
-//		virtual void SetParent(DerivedSelf* parent)
-//		{
-//			m_transform.SetParent(parent ? &parent->m_transform : nullptr);
-//		}
-//
-//		DerivedSelf* GetParent() const
-//		{
-//			return (m_transform.GetParent()) ? m_transform.GetParent()->userData.Get<DerivedSelf>() : nullptr;
-//		}
 //	};
 //
 //	class GameObject : public Object, public SceneTransform<GameObject>
@@ -1103,6 +742,381 @@ namespace ECS
 {
 	export class Scene;
 	export class SceneManager;
+
+	export class SceneAware
+	{
+	private:
+		gsl::not_null<Scene*> m_scene;
+
+	public:
+		SceneAware(gsl::not_null<Scene*> scene) :
+			m_scene{ scene }
+		{
+		}
+
+	protected:
+		~SceneAware() = default;
+	};
+
+	export enum class ReparentLogic
+	{
+		KeepWorldTransform,
+		KeepLocalTransform
+	};
+
+	struct Transform
+	{
+		xk::Math::Vector<float, 2> position;
+		xk::Math::Degree<float> rotation;
+
+		Transform& operator+=(const Transform& rh)
+		{
+			position += rh.position;
+			rotation += rh.rotation;
+			return *this;
+		}
+
+		Transform& operator-=(const Transform& rh)
+		{
+			position -= rh.position;
+			rotation -= rh.rotation;
+			return *this;
+		}
+
+		friend Transform operator+(Transform lh, const Transform& rh)
+		{
+			return lh += rh;
+		}
+
+		friend Transform operator-(Transform lh, const Transform& rh)
+		{
+			return lh -= rh;
+		}
+	};
+
+	export class TransformNode
+	{
+	private:
+		TransformNode* m_parent = nullptr;
+		std::vector<TransformNode*> m_children;
+		Transform m_localTransform;
+
+		mutable bool m_worldTransformIsDirty = true;
+		mutable Transform m_cachedWorldTransform;
+
+	protected:
+		~TransformNode()
+		{
+			while(!m_children.empty())
+			{
+				m_children.back()->SetParent(m_parent, ECS::ReparentLogic::KeepLocalTransform);
+			}
+			SetParent(nullptr, ECS::ReparentLogic::KeepLocalTransform);
+		}
+
+	public:
+		TransformNode() = default;
+		TransformNode(Transform initialTransform, TransformNode* parent = nullptr, ReparentLogic reparentLogic = ReparentLogic::KeepLocalTransform) :
+			m_localTransform{ initialTransform }
+		{
+
+		}
+
+	public:
+		xk::Math::Aliases::Vector2 GetLocalPosition() const noexcept { return m_localTransform.position; }
+		xk::Math::Degree<float> GetLocalRotation() const noexcept { return m_localTransform.rotation; }
+		Transform GetLocalTransform() const noexcept { return m_localTransform; }
+
+		void SetLocalPosition(xk::Math::Vector<float, 2> position) noexcept 
+		{ 
+			m_localTransform.position = position;
+			RaiseWorldTransformDirtyFlag();
+		}
+		void SetLocalRotation(xk::Math::Degree<float> rotation) noexcept 
+		{ 
+			m_localTransform.rotation = rotation;
+			RaiseWorldTransformDirtyFlag();
+		}
+		void SetLocalTransform(Transform transform) noexcept 
+		{
+			m_localTransform = transform;
+			RaiseWorldTransformDirtyFlag();
+		}
+
+		xk::Math::Vector<float, 2> GetWorldPosition() const noexcept 
+		{ 
+			return GetWorldTransform().position;
+		}
+		xk::Math::Degree<float> GetWorldRotation() const noexcept 
+		{
+			return GetWorldTransform().rotation;
+		}
+		Transform GetWorldTransform() const noexcept 
+		{
+			RecalculateWorldTransform();
+			return m_cachedWorldTransform;
+		}
+
+		void SetWorldPosition(xk::Math::Vector<float, 2> position) noexcept 
+		{ 
+			SetLocalPosition(position - GetParentWorldPosition());
+		}
+		void SetWorldRotation(xk::Math::Degree<float> rotation) noexcept 
+		{ 
+			SetLocalRotation(rotation - GetParentWorldRotation());
+		}
+		void SetWorldTransform(Transform transform) noexcept 
+		{ 
+			SetLocalTransform(transform - GetParentWorldTransform());
+		}
+
+	public:
+		void SetParent(TransformNode* newParent, ReparentLogic logic = ReparentLogic::KeepWorldTransform)
+		{
+			DetectCycle(newParent);
+			DetectSelfParenting(newParent);
+
+			auto Reparent = [newParent, oldParent = m_parent, this]
+			{
+				//The sequence is this way because push_back might throw
+				//If it does throw, Reparent will do absolutely nothing
+				//std::erase, while not noexcept, is expected to be effectively be noexcept
+				//as no re-allocations can occur and we're messing around with a vector of non-owning pointers
+				if(newParent)
+					newParent->m_children.push_back(this);
+
+				m_parent = newParent;
+
+				if(oldParent)
+					std::erase(oldParent->m_children, this);
+			};
+
+			switch(logic)
+			{
+				using enum ReparentLogic;
+			case KeepWorldTransform:
+			{
+				Transform currentTransform = GetWorldTransform();
+				Reparent();
+				SetWorldTransform(currentTransform);
+			}
+				break;
+			case KeepLocalTransform:
+				Reparent();
+				RaiseWorldTransformDirtyFlag();
+				break;
+			default:
+				throw std::runtime_error("Unknown reparenting logic");
+			}
+		}
+		TransformNode* GetParent() const noexcept { return m_parent; }
+		std::span<TransformNode* const> GetChildren() const noexcept { return m_children; }
+
+	private:
+		xk::Math::Vector<float, 2> GetParentWorldPosition() const noexcept
+		{
+			return GetParentWorldTransform().position;
+		}
+
+		xk::Math::Degree<float> GetParentWorldRotation() const noexcept
+		{
+			return GetParentWorldTransform().rotation;
+		}
+
+		Transform GetParentWorldTransform() const noexcept
+		{
+			return m_parent ? m_parent->GetWorldTransform() : Transform{};
+		}
+
+		void DetectCycle(TransformNode* newParent)
+		{
+			for (TransformNode* p = newParent; p; p = p->m_parent)
+			{
+				if (p == this)
+					throw std::runtime_error("Cyclic parenting detected and is not allowed");
+			}
+		}
+
+		void DetectSelfParenting(TransformNode* newParent)
+		{
+			if(newParent == this)
+				throw std::runtime_error("Cannot parent to yourself");
+		}
+
+		void RaiseWorldTransformDirtyFlag()
+		{
+			if(!m_worldTransformIsDirty)
+				RaiseChildrenWorldTransformDirtyFlag();
+			m_worldTransformIsDirty = true;
+		}
+
+		void RaiseChildrenWorldTransformDirtyFlag()
+		{
+			for (TransformNode* child : m_children)
+			{
+				if (child->m_worldTransformIsDirty)
+					continue;
+
+				child->m_worldTransformIsDirty = true;
+				child->RaiseChildrenWorldTransformDirtyFlag();
+			}
+		}
+
+		void RecalculateWorldTransform() const
+		{
+			if (m_worldTransformIsDirty)
+			{
+				m_cachedWorldTransform = GetParentWorldTransform() + GetLocalTransform();
+				m_worldTransformIsDirty = false;
+			}
+		}
+	};
+
+	export class WorldTransformProxy
+	{
+	private:
+		class PositionProxy
+		{
+		private:
+			TransformNode& m_transform;
+
+		public:
+			PositionProxy(TransformNode& transform) :
+				m_transform(transform)
+			{
+
+			}
+
+			PositionProxy& operator=(const xk::Math::Vector<float, 2>& position) { m_transform.SetWorldPosition(position); return *this; }
+			PositionProxy& operator=(const PositionProxy& position) { return operator=(position.GetValue()); }
+
+			PositionProxy& operator+=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() + position); }
+			PositionProxy& operator+=(const PositionProxy& position) { return operator+=(position.GetValue()); }
+
+			PositionProxy& operator-=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() - position); }
+			PositionProxy& operator-=(const PositionProxy& position) { return operator-=(position.GetValue()); }
+
+			xk::Math::Vector<float, 2> GetValue() const { return m_transform.GetWorldPosition(); }
+			operator xk::Math::Vector<float, 2>() const { return GetValue(); }
+		};
+
+		class RotationProxy
+		{
+		private:
+			TransformNode& m_transform;
+
+		public:
+			RotationProxy(TransformNode& transform) :
+				m_transform(transform)
+			{
+
+			}
+
+			RotationProxy& operator=(const xk::Math::Degree<float>& angle) { m_transform.SetWorldRotation(angle); return *this; }
+			RotationProxy& operator=(const RotationProxy& angle) { return operator=(angle.GetValue()); }
+
+			RotationProxy& operator+=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() + angle); }
+			RotationProxy& operator+=(const RotationProxy& angle) { return operator+=(angle.GetValue()); }
+
+			RotationProxy& operator-=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() - angle); }
+			RotationProxy& operator-=(const RotationProxy& angle) { return operator-=(angle.GetValue()); }
+
+			xk::Math::Degree<float> GetValue() const { return m_transform.GetWorldRotation(); }
+			operator xk::Math::Degree<float>() const { return GetValue(); }
+		};
+
+	private:
+		TransformNode& m_transform;
+
+	public:
+		WorldTransformProxy(TransformNode& transform) :
+			m_transform(transform)
+		{
+
+		}
+
+		PositionProxy Position() { return { m_transform }; }
+		RotationProxy Rotation() { return { m_transform }; }
+		Transform GetValue() const { return m_transform.GetWorldTransform(); }
+	};
+
+	export class LocalTransformProxy
+	{
+	private:
+		class PositionProxy
+		{
+		private:
+			TransformNode& m_transform;
+
+		public:
+			PositionProxy(TransformNode& transform) :
+				m_transform(transform)
+			{
+
+			}
+
+			PositionProxy& operator=(const xk::Math::Vector<float, 2>& position) { m_transform.SetLocalPosition(position); return *this; }
+			PositionProxy& operator=(const PositionProxy& position) { return operator=(position.GetValue()); }
+
+			PositionProxy& operator+=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() + position); }
+			PositionProxy& operator+=(const PositionProxy& position) { return operator+=(position.GetValue()); }
+
+			PositionProxy& operator-=(const xk::Math::Vector<float, 2>& position) { return operator=(GetValue() - position); }
+			PositionProxy& operator-=(const PositionProxy& position) { return operator-=(position.GetValue()); }
+
+			xk::Math::Vector<float, 2> GetValue() const { return m_transform.GetLocalPosition(); }
+			operator xk::Math::Vector<float, 2>() const { return GetValue(); }
+		};
+
+		class RotationProxy
+		{
+		private:
+			TransformNode& m_transform;
+
+		public:
+			RotationProxy(TransformNode& transform) :
+				m_transform(transform)
+			{
+
+			}
+
+			RotationProxy& operator=(const xk::Math::Degree<float>& angle) { m_transform.SetLocalRotation(angle); return *this; }
+			RotationProxy& operator=(const RotationProxy& angle) { return operator=(angle.GetValue()); }
+
+			RotationProxy& operator+=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() + angle); }
+			RotationProxy& operator+=(const RotationProxy& angle) { return operator+=(angle.GetValue()); }
+
+			RotationProxy& operator-=(const xk::Math::Degree<float>& angle) { return operator=(GetValue() - angle); }
+			RotationProxy& operator-=(const RotationProxy& angle) { return operator-=(angle.GetValue()); }
+
+			xk::Math::Degree<float> GetValue() const { return m_transform.GetLocalRotation(); }
+			operator xk::Math::Degree<float>() const { return GetValue(); }
+		};
+
+	private:
+		TransformNode& m_transform;
+
+	public:
+		LocalTransformProxy(TransformNode& transform) :
+			m_transform(transform)
+		{
+
+		}
+
+		PositionProxy Position() { return { m_transform }; }
+		RotationProxy Rotation() { return { m_transform }; }
+		Transform GetValue() const { return m_transform.GetLocalTransform(); }
+	};
+
+	export class Object : public virtual SceneAware
+	{
+
+	};
+
+	export class GameObject : public virtual SceneAware, public virtual TransformNode
+	{
+
+	};
 
 	export class SceneSystem
 	{

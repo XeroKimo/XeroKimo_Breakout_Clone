@@ -15,13 +15,6 @@ import SDL2pp;
 
 using namespace xk::Math::Aliases;
 
-void SetAnchors(DeluEngine::GUI::UIElement& element, Vector2 minAnchor, Vector2 maxAnchor)
-{
-	const Vector2 size = maxAnchor - minAnchor;
-	element.SetLocalSizeAndRepresentation(DeluEngine::GUI::RelativeSize{ size });
-	element.SetLocalPositionAndRepresentation(DeluEngine::GUI::RelativePosition{ minAnchor + Vector2{ size.X() * element.GetPivot().X(), size.Y() * element.GetPivot().Y() } });
-}
-
 SDL2pp::FRect GetRect(const DeluEngine::GUI::UIElement& element)
 {
 	DeluEngine::GUI::Rect baseRect = element.GetRect();
@@ -78,7 +71,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
 	DeluEngine::Engine engine
 	{
-		.window{ SDL2pp::CreateWindow("Bullet Hell", { 1600, 900 }, SDL2pp::WindowFlag::OpenGL) },
+		.window{ SDL2pp::CreateWindow("Breakout", { 1600, 900 }, SDL2pp::WindowFlag::OpenGL) },
 		.renderer{ engine.window.get() },
 	};
 
