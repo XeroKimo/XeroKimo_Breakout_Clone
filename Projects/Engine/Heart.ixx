@@ -12,6 +12,7 @@ module;
 #include <gsl/pointers>
 
 export module DeluEngine:Heart;
+import xk.ScopeGuard;
 
 namespace DeluEngine
 {
@@ -24,6 +25,7 @@ namespace DeluEngine
 	export class PulseGroup
 	{
 	private:
+		bool isPulsing = false;
 		std::int16_t priority;
 		float timeMultiplier = 1;
 		std::vector<std::unique_ptr<PulseGroup>> m_childGroups;
@@ -62,6 +64,7 @@ namespace DeluEngine
 
 		void Pulse(std::chrono::nanoseconds deltaTime);
 		
+		bool IsPulsing() const noexcept { return isPulsing; }
 		std::int16_t GetPriority() const noexcept { return priority; }
 	};
 
@@ -71,6 +74,8 @@ namespace DeluEngine
 		std::chrono::steady_clock::time_point previousTick = std::chrono::steady_clock::now();
 		std::vector<std::unique_ptr<PulseGroup>> rootGroups;
 		std::unordered_map<std::string, PulseGroup*> lookUpCache;
+		std::vector<std::pair<PulseGroup*, gsl::not_null<PulseCallback*>>> pendingRegisters;
+		std::vector<std::pair<PulseGroup*, gsl::not_null<PulseCallback*>>> pendingRemoved;
 
 	public:
 		void RegisterGroup(std::string_view name, std::int16_t priority)
@@ -92,12 +97,22 @@ namespace DeluEngine
 
 		void RegisterCallback(std::string_view name, gsl::not_null<PulseCallback*> callback)
 		{
-			lookUpCache.at(std::string{ name })->AddPulseCallback(callback);
+			PulseGroup* group = lookUpCache.at(std::string{ name });
+
+			if(!group->IsPulsing())
+				group->AddPulseCallback(callback);
+			else
+				pendingRegisters.push_back({ group, callback });
 		}
 
 		void RemoveCallback(std::string_view name, gsl::not_null<PulseCallback*> callback)
 		{
-			lookUpCache.at(std::string{ name })->RemovePulseCallback(callback);
+			PulseGroup* group = lookUpCache.at(std::string{ name });
+
+			if(!group->IsPulsing())
+				group->RemovePulseCallback(callback);
+			else
+				pendingRemoved.push_back({ group, callback });
 		}
 
 		void ClearCallbacks(std::string_view name)
@@ -107,6 +122,15 @@ namespace DeluEngine
 
 		void Pulse()
 		{
+			for(auto [pulseGroup, callback] : pendingRegisters)
+			{
+				pulseGroup->AddPulseCallback(callback);
+			}
+			for(auto [pulseGroup, callback] : pendingRemoved)
+			{
+				pulseGroup->RemovePulseCallback(callback);
+			}
+
 			auto currentTick = std::chrono::steady_clock::now();
 			auto delta = currentTick - previousTick;
 
@@ -159,8 +183,10 @@ namespace DeluEngine
 
 	void PulseGroup::Pulse(std::chrono::nanoseconds deltaTime)
 	{
-		deltaTime *= timeMultiplier;
+		isPulsing = true;
+		auto pulseRollback = xk::ScopeExit{ [this] {isPulsing = false; } };
 
+		deltaTime *= timeMultiplier;
 		std::size_t i = 0;
 		for(; i < m_childGroups.size() && m_childGroups[i]->priority <= 0; i++)
 		{

@@ -743,6 +743,13 @@ namespace ECS
 	export class Scene;
 	export class SceneManager;
 
+	//Make a constructor for classes that will be virtually
+	//inherited with this available as this will signal that
+	//there will be a derived class which will for sure initialize
+	//the virtual inherited class. Do not call constructors with this
+	//if you're unsure that a derived class exists.
+	enum class VirtualInheritencePassthrough {};
+
 	export class SceneAware
 	{
 	private:
@@ -755,7 +762,18 @@ namespace ECS
 		}
 
 	protected:
+		//Little hack to allow assigning a nullptr to a not_null object
+		//Realistically this constructor will never run as some derived
+		//class will virtually construct using a normal constructor
+		SceneAware(VirtualInheritencePassthrough) :
+			m_scene{ static_cast<Scene*>(nullptr) }
+		{
+
+		}
 		~SceneAware() = default;
+
+	public:
+		Scene& GetScene() const noexcept { return *m_scene; }
 	};
 
 	export enum class ReparentLogic
@@ -817,9 +835,27 @@ namespace ECS
 	public:
 		TransformNode() = default;
 		TransformNode(Transform initialTransform, TransformNode* parent = nullptr, ReparentLogic reparentLogic = ReparentLogic::KeepLocalTransform) :
-			m_localTransform{ initialTransform }
+			m_parent{ parent }
 		{
+			DetectCycle(parent);
+			DetectSelfParenting(parent);
 
+			if(m_parent)
+				m_parent->m_children.push_back(this);
+
+			switch(reparentLogic)
+			{
+				using enum ReparentLogic;
+			case KeepLocalTransform:
+				SetLocalTransform(initialTransform);
+				break;
+			case KeepWorldTransform:
+				SetWorldTransform(initialTransform);
+				break;
+			default:
+				throw std::runtime_error("Unknown reparenting logic");
+				break;
+			}
 		}
 
 	public:
@@ -1110,42 +1146,75 @@ namespace ECS
 
 	export class Object : public virtual SceneAware
 	{
+	public:
+		Object(gsl::not_null<Scene*> scene) :
+			SceneAware{ scene }
+		{
 
+		}
 	};
 
-	export class GameObject : public virtual SceneAware, public virtual TransformNode
+	export class GameObject : 
+		public virtual SceneAware, 
+		public virtual TransformNode,
+		public Object
 	{
+	public:
+		GameObject(gsl::not_null<Scene*> scene) :
+			SceneAware{ scene },
+			Object{ scene }
+		{
 
+		}
 	};
 
-	export class SceneSystem
+	export class SceneSystem : public SceneAware
 	{
-	private:
-		gsl::not_null<Scene*> m_scene;
-
 	public:
 		SceneSystem(const gsl::not_null<Scene*> scene) :
-			m_scene(scene)
+			SceneAware{ scene }
 		{
 
 		}
 		virtual ~SceneSystem() = default;
 
-		Scene& GetScene() const noexcept { return *m_scene; }
 	};
 
 
 	export class Scene final
 	{
 	private:
-		std::vector<std::unique_ptr<SceneSystem>> m_systems;
 		gsl::not_null<SceneManager*> m_sceneManager;
+		std::vector<std::weak_ptr<Object>> m_registeredObjects;
+		std::vector<std::shared_ptr<Object>> m_sceneOwnedObjects;
+		std::vector<std::shared_ptr<Object>> m_rootObjects;
+		std::vector<std::unique_ptr<SceneSystem>> m_systems;
 
 	public:
 		Scene(gsl::not_null<SceneManager*> sceneManager) :
 			m_sceneManager{ sceneManager }
 		{
 
+		}
+
+
+		//TODO: Make the scene manager hold the underlying memory for all game objects, keeping the registered
+		//objects local to the scene.
+		template<std::derived_from<Object> Ty, class... ConstructorParams>
+		std::weak_ptr<Ty> NewSceneOwnedObject(ConstructorParams&&... params)
+		{
+			std::shared_ptr<Ty> object = std::make_shared<Ty>(this, std::forward<ConstructorParams>(params)...);
+			m_sceneOwnedObjects.push_back(object);
+			m_registeredObjects.push_back(object);
+			return object;
+		}
+
+		template<std::derived_from<Object> Ty, class... ConstructorParams>
+		std::shared_ptr<Ty> NewObject(ConstructorParams&&... params)
+		{
+			std::shared_ptr<Ty> object = std::make_shared<Ty>(this, std::forward<ConstructorParams>(params)...);
+			m_registeredObjects.push_back(object);
+			return object;
 		}
 
 		template<std::derived_from<SceneSystem> Ty, class... ConstructorParams>
@@ -1164,7 +1233,21 @@ namespace ECS
 			return static_cast<Ty&>(*(*it));
 		}
 
+		//std::vector<std::weak_ptr<Object>> GetObjects() const { return m_registeredObjects; }
+
 		xk::AnyRef GetExternalSystem() const;
+	};
+
+	export struct SceneManagerCallbacks
+	{
+		virtual void OnRequestedLoadScene(std::function<void(Scene&)> scene) = 0;
+
+		//Called anytime before a scene is about to load, can be used to do some common set up
+		//across all scenes
+		virtual void OnScenePreload(Scene& scene) = 0;
+		
+		//Called anytime after a scene has loaded, can be used to finalize some set up
+		virtual void OnScenePostLoad(Scene& scene) = 0;
 	};
 
 	export class SceneManager final
@@ -1172,15 +1255,13 @@ namespace ECS
 	private:
 		xk::AnyRef m_externalSystem;
 		std::unique_ptr<Scene> m_scene;
-
-	public:
-		//Likely some temp thing
-		std::function<void(Scene&)> commonScenePreload;
+		gsl::not_null<SceneManagerCallbacks*> m_callback;
 
 	public:
 		template<class Ty>
-		SceneManager(Ty& externalSystem) :
-			m_externalSystem{ externalSystem }
+		SceneManager(Ty& externalSystem, gsl::not_null<SceneManagerCallbacks*> callbacks) :
+			m_externalSystem{ externalSystem },
+			m_callback{ callbacks }
 		{
 
 		}
@@ -1189,9 +1270,9 @@ namespace ECS
 		void LoadScene(InitFunc func)
 		{
 			m_scene = std::make_unique<Scene>(this);
-			if(commonScenePreload)
-				commonScenePreload(*m_scene);
+			m_callback->OnScenePreload(*m_scene);
 			func(*m_scene);
+			m_callback->OnScenePostLoad(*m_scene);
 		}
 
 		xk::AnyRef GetExternalSystem() const

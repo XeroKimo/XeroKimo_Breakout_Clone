@@ -88,7 +88,7 @@ namespace DeluEngine
 		//b2World physicsWorld{ {0, -9.8f } };
 		//Box2DCallbacks box2DCallbacks;
 		std::function<void(ECS::Scene&)> queuedScene;
-		ECS::SceneManager sceneManager{ *this };
+		ECS::SceneManager sceneManager;
 		bool running = true;
 
 

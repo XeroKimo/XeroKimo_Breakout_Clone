@@ -62,6 +62,21 @@ void DrawGUI(DeluEngine::Renderer& renderer, DeluEngine::GUI::GUIEngine& frame)
 void Render(DeluEngine::Engine& engine);
 #undef CreateWindow
 
+struct SceneManagerCallbacks : public ECS::SceneManagerCallbacks
+{
+	// Inherited via SceneManagerCallbacks
+	void OnRequestedLoadScene(std::function<void(ECS::Scene&)> scene) override
+	{
+	}
+	void OnScenePreload(ECS::Scene& scene) override
+	{
+		scene.CreateSystem<DeluEngine::SceneGUISystem>();
+	}
+	void OnScenePostLoad(ECS::Scene& scene) override
+	{
+	}
+};
+
 #ifdef _CONSOLE
 int main()
 #else
@@ -69,17 +84,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	PSTR lpCmdLine, int nCmdShow)
 #endif
 {
+	SceneManagerCallbacks sceneManagerCallbacks;
 	DeluEngine::Engine engine
 	{
 		.window{ SDL2pp::CreateWindow("Breakout", { 1600, 900 }, SDL2pp::WindowFlag::OpenGL) },
 		.renderer{ engine.window.get() },
+		.sceneManager{ engine, &sceneManagerCallbacks }
 	};
 
 	DeluEngine::gHeart.RegisterGroup("Game", 0);
-	engine.sceneManager.commonScenePreload = [](ECS::Scene& scene)
-		{
-			scene.CreateSystem<DeluEngine::SceneGUISystem>();
-		};
+
 	SDL_Init(SDL_INIT_AUDIO);
 
 	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);

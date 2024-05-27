@@ -23,6 +23,8 @@ auto TestScene()
 {
 	return [](ECS::Scene& scene)
 	{
+			scene.NewObject<ECS::GameObject>();
+			//scene.NewObject<ECS::GameObject>();
 	};
 }
 

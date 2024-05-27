@@ -42,6 +42,20 @@ namespace DeluEngine
 	//	Scene& GetScene() const noexcept;
 	//};
 
+	export class GameObject : public ECS::GameObject
+	{
+	public:
+		GameObject(gsl::not_null<ECS::Scene*> scene) :
+			SceneAware{ scene },
+			ECS::GameObject{ scene }
+		{
+
+		}
+
+	public:
+		Engine& GetEngine() const noexcept { return DeluEngine::GetEngine(GetScene()); }
+	};
+
 	//export class SceneInit
 	//{
 

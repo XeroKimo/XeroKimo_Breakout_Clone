@@ -17,8 +17,6 @@ import xk.Math.Algorithms;
 import SDL2pp;
 import :Renderer;
 
-using namespace xk::Math::Aliases;
-
 namespace DeluEngine::GUI
 {
 	export struct AbsolutePosition
