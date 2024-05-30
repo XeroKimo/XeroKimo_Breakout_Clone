@@ -10,4 +10,13 @@ namespace DeluEngine
 	//{
 
 	//}
+
+	SpriteObject::SpriteObject(gsl::not_null<ECS::Scene*> scene, ConstructorParams params) :
+		SceneAware{ scene },
+		GameObject{ scene },
+		PulseCallback{ "Game" },
+		m_spriteHandle{ GetEngine().renderer.CreateSprite(params.sprite) }
+	{
+
+	}
 }

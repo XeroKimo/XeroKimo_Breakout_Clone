@@ -204,7 +204,23 @@ namespace DeluEngine
 			key = Escape;
 			break;
 
+		case SDLK_LEFT:
+			key = Left;
+			break;
+		case SDLK_RIGHT:
+			key = Right;
+			break;
+
+		case SDLK_UP:
+			key = Up;
+			break;
+		case SDLK_DOWN:
+			key = Down;
+			break;
+
 		default:
+			//A reminder to implement new keys. If testing something out with new inputs, and is getting in the way, comment out this exception
+			throw std::runtime_error("Missing key conversion");
 			key = Temp_None;
 			break;
 		}

@@ -199,8 +199,10 @@ void DrawSprites(DeluEngine::Renderer& renderer, std::span<DeluEngine::Sprite*> 
 		SDL2pp::FRect destRect;
 		destRect.w = static_cast<float>(sourceRect.w);
 		destRect.h = static_cast<float>(sourceRect.h);
+		destRect.x = 0;
+		destRect.y = 0;
 		destRect.x = sprite->position.X();
-		destRect.y = -sprite->position.Y() + outputSize.Y();
+		destRect.y = -sprite->position.Y() + outputSize.Y() - sourceRect.h;
 		renderer.backend->CopyEx(sprite->GetSpriteData()->texture.get(), sourceRect, destRect, sprite->angle._value, std::nullopt, SDL2pp::RendererFlip::SDL_FLIP_NONE);
 	}
 }
