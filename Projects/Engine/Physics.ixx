@@ -177,22 +177,6 @@ namespace DeluEngine
 			m_body = GetPhysicsWorld().CreateBody(&def);
 		}
 
-		//void CreateDefaultBodyIfNull()
-		//{
-		//	if (!m_body)
-		//	{
-		//		CreateBody({});
-		//		b2BodyDef def;
-		//		b2BodyUserData data;
-
-		//		def.position = { GetWorldPosition().X(), GetWorldPosition().Y() };
-		//		def.angle = GetWorldRotation()._value;
-		//		data.pointer = reinterpret_cast<uintptr_t>(this);
-		//		def.userData = data;
-		//		m_body = GetPhysicsWorld().CreateBody(&def);
-		//	}
-		//}
-
 		b2World& GetPhysicsWorld();
 	};
 

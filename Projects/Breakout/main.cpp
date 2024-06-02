@@ -93,6 +93,7 @@ struct PhysicsPulse : public DeluEngine::PulseCallback
 		accumulator += deltaTime;
 		if(accumulator >= stepRate)
 		{
+			accumulator -= stepRate;
 			auto objects = engine->sceneManager.GetObjects();
 			for(auto& object : objects)
 			{
@@ -141,9 +142,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	SDL_Init(SDL_INIT_AUDIO);
 
 	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
-	//engine.box2DCallbacks.engine = &engine;
-	//engine.physicsWorld.SetContactListener(&engine.box2DCallbacks);
-	//engine.physicsWorld.SetDebugDraw(&engine.box2DCallbacks);
+	engine.box2DCallbacks.engine = &engine;
+	engine.box2DCallbacks.SetFlags(b2Draw::e_shapeBit);
+	engine.physicsWorld.SetContactListener(&engine.box2DCallbacks);
+	engine.physicsWorld.SetDebugDraw(&engine.box2DCallbacks);
 	DeluEngine::Input::defaultController = &engine.controller;
 
 	engine.guiEngine.internalTexture = engine.renderer.backend->CreateTexture(
@@ -156,8 +158,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	engine.renderer.debugCallbacks.push_back([&engine](DeluEngine::DebugRenderer& renderer)
 		{
 			//engine.scene->DebugDraw(renderer);
-			//engine.box2DCallbacks.SetFlags(b2Draw::e_shapeBit);
-			//engine.physicsWorld.DebugDraw();
+			engine.physicsWorld.DebugDraw();
 		});
 
 	std::chrono::duration<float> physicsAccumulator{ 0.f };
