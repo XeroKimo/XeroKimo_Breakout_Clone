@@ -7,6 +7,7 @@ module;
 #include <iostream>
 #include <numbers>
 #include <functional>
+#include <box2d/box2d.h>
 
 export module DeluEngine:Engine;
 import :Renderer;
@@ -85,7 +86,7 @@ namespace DeluEngine
 		Controller controller;
 		Experimental::ControllerContextManager controllerContext;
 		GUI::GUIEngine guiEngine;
-		//b2World physicsWorld{ {0, -9.8f } };
+		b2World physicsWorld{ {0, -9.8f } };
 		//Box2DCallbacks box2DCallbacks;
 		std::function<void(ECS::Scene&)> queuedScene;
 		ECS::SceneManager sceneManager;

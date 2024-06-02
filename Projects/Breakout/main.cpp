@@ -77,6 +77,46 @@ struct SceneManagerCallbacks : public ECS::SceneManagerCallbacks
 	}
 };
 
+struct PhysicsPulse : public DeluEngine::PulseCallback
+{
+	std::chrono::nanoseconds accumulator{};
+	std::chrono::nanoseconds stepRate = std::chrono::nanoseconds(std::chrono::seconds{ 1 }) / 60;
+	DeluEngine::Engine* engine;
+	PhysicsPulse() :
+		PulseCallback("Physics")
+	{
+
+	}
+
+	void Update(std::chrono::nanoseconds deltaTime) override
+	{
+		accumulator += deltaTime;
+		if(accumulator >= stepRate)
+		{
+			auto objects = engine->sceneManager.GetObjects();
+			for(auto& object : objects)
+			{
+				std::shared_ptr<DeluEngine::RigidBody> body = std::dynamic_pointer_cast<DeluEngine::RigidBody>(object.lock());
+				if(body)
+				{
+					body->SyncTransformRigidBodyToInternalBody();
+				}
+			}
+
+			engine->physicsWorld.Step(std::chrono::duration<float>(stepRate).count(), 8, 3);
+
+			for(auto& object : objects)
+			{
+				std::shared_ptr<DeluEngine::RigidBody> body = std::dynamic_pointer_cast<DeluEngine::RigidBody>(object.lock());
+				if(body)
+				{
+					body->SyncTransformInternalBodyToRigidBody();
+				}
+			}
+		}
+	}
+};
+
 #ifdef _CONSOLE
 int main()
 #else
@@ -93,6 +133,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	};
 
 	DeluEngine::gHeart.RegisterGroup("Game", 0);
+	DeluEngine::gHeart.RegisterGroup("Physics", 1);
+
+	PhysicsPulse physicsPulse;
+	physicsPulse.engine = &engine;
 
 	SDL_Init(SDL_INIT_AUDIO);
 

@@ -748,7 +748,7 @@ namespace ECS
 	//there will be a derived class which will for sure initialize
 	//the virtual inherited class. Do not call constructors with this
 	//if you're unsure that a derived class exists.
-	enum class VirtualInheritencePassthrough {};
+	export enum class VirtualInheritencePassthrough {};
 
 	export class SceneAware
 	{
@@ -1152,6 +1152,8 @@ namespace ECS
 		{
 
 		}
+
+		virtual ~Object() = default;
 	};
 
 	export class GameObject : 
@@ -1233,7 +1235,7 @@ namespace ECS
 			return static_cast<Ty&>(*(*it));
 		}
 
-		//std::vector<std::weak_ptr<Object>> GetObjects() const { return m_registeredObjects; }
+		std::vector<std::weak_ptr<Object>> GetObjects() const { return m_registeredObjects; }
 
 		xk::AnyRef GetExternalSystem() const;
 	};
@@ -1279,6 +1281,8 @@ namespace ECS
 		{
 			return m_externalSystem;
 		}
+
+		std::vector<std::weak_ptr<Object>> GetObjects() const { return m_scene->GetObjects(); }
 	};
 
 	xk::AnyRef Scene::GetExternalSystem() const

@@ -13,13 +13,14 @@ module;
 #include <ctime>
 #include <format>
 #include <SDL2/SDL_mixer.h>
+#include <box2d/box2d.h>
 
 export module DeluGame;
 import xk.Math.Matrix;
 import DeluEngine;
 import SDL2pp;
 
-class Paddle : public DeluEngine::GameObject, public DeluEngine::PulseCallback
+class Paddle : public DeluEngine::GameObject, public DeluEngine::PulseCallback, public DeluEngine::RigidBody
 {
 private:
 	std::shared_ptr<DeluEngine::SpriteObject> m_sprite;
@@ -29,12 +30,13 @@ public:
 	Paddle(gsl::not_null<ECS::Scene*> scene, DeluEngine::SpriteObject::ConstructorParams spriteConstructor) :
 		ECS::SceneAware{ scene },
 		DeluEngine::GameObject{ scene },
-		PulseCallback{ "Game" },
+		DeluEngine::PulseCallback{ "Game" },
+		DeluEngine::RigidBody{ DeluEngine::BodyDef{ .type = b2BodyType::b2_dynamicBody, .allowSleep = false} },
 		m_sprite{ scene->NewObject<DeluEngine::SpriteObject>(spriteConstructor) }
 	{
 		m_sprite->SetParent(this);
 		SetLocalPosition({ 20, 256 });
-
+		CreateAndRegisterFixture({.density = 1 }, DeluEngine::BoxShape{ { 10, 10 } });
 		DeluEngine::Experimental::ControllerContext& context = GetEngine().controllerContext.FindContext("Game");
 		DeluEngine::Experimental::ControllerAction& moveAction = context.FindAction("Player Move");
 		moveAction.BindAxis2D([this](xk::Math::Aliases::Vector2 input) { paddleDirection = input.X(); });
