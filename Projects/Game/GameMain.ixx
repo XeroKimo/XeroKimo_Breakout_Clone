@@ -51,6 +51,26 @@ public:
 
 };
 
+class Border : public DeluEngine::GameObject, public DeluEngine::RigidBody
+{
+
+public:
+	Border(gsl::not_null<ECS::Scene*> scene) :
+		ECS::SceneAware{ scene },
+		DeluEngine::GameObject{ scene },
+		DeluEngine::RigidBody{ DeluEngine::BodyDef{ .type = b2BodyType::b2_staticBody } }
+	{
+		DeluEngine::ChainShape shape;
+		shape.loop = true;
+
+		shape.vertices.push_back({ 0, 0 });
+		shape.vertices.push_back({ 0, 1000 });
+		shape.vertices.push_back({ 1000, 1000 });
+		shape.vertices.push_back({ 1000, 0 });
+		CreateAndRegisterFixture({}, shape);
+	}
+};
+
 auto TestScene()
 {
 	return [](ECS::Scene& scene)
@@ -68,6 +88,7 @@ auto TestScene()
 			spriteData->drawRect.w = surface.get()->w;
 			spriteData->drawRect.h = surface.get()->h;
 			scene.NewSceneOwnedObject<Paddle>(DeluEngine::SpriteObject::ConstructorParams{spriteData});
+			scene.NewSceneOwnedObject<Border>();
 			//scene.NewObject<ECS::GameObject>();
 	};
 }

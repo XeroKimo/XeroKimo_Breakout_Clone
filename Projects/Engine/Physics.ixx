@@ -92,6 +92,35 @@ namespace DeluEngine
 		}
 	};
 
+	export struct ChainShape
+	{
+		bool loop;
+		std::vector<xk::Math::Aliases::Vector2> vertices;
+
+		operator b2ChainShape() const noexcept
+		{
+			b2ChainShape shape{};
+			std::vector<b2Vec2> verts;
+			verts.reserve(vertices.size());
+			for(auto& v : vertices)
+			{
+				verts.push_back({ v.X(), v.Y() });
+			}
+
+			if(loop)
+			{
+				shape.CreateLoop(verts.data(), verts.size());
+			}
+			else
+			{
+				auto start = b2Vec2{ verts[1].x - (verts[0].x - verts[1].x), verts[1].y - (verts[0].y - verts[1].y) };
+				auto end = b2Vec2{ verts[verts.size() - 1].x - (verts[verts.size() - 2].x - verts[verts.size() - 1].x), verts[verts.size() - 1].y - (verts[verts.size() - 2].y - verts[verts.size() - 1].y) };
+				shape.CreateChain(verts.data(), verts.size(), start, end);
+			}
+			return shape;
+		}
+	};
+
 	export class RigidBody;
 
 
@@ -110,6 +139,7 @@ namespace DeluEngine
 	protected: 
 		Fixture(gsl::not_null<ECS::Scene*> scene, gsl::not_null<RigidBody*> owner, const FixtureParams& params, const CircleShape& shape);
 		Fixture(gsl::not_null<ECS::Scene*> scene, gsl::not_null<RigidBody*> owner, const FixtureParams& params, const BoxShape& shape);
+		Fixture(gsl::not_null<ECS::Scene*> scene, gsl::not_null<RigidBody*> owner, const FixtureParams& params, const ChainShape& shape);
 
 
 		~Fixture() override;
@@ -117,6 +147,7 @@ namespace DeluEngine
 
 	export class BoxFixture;
 	export class CircleFixture;
+	export class ChainFixture;
 
 	export class RigidBody : 
 		public virtual ECS::SceneAware, 
@@ -146,6 +177,7 @@ namespace DeluEngine
 		std::weak_ptr<Fixture> CreateAndRegisterFixture(const FixtureParams& params, const CircleShape& shape);
 
 		std::weak_ptr<Fixture> CreateAndRegisterFixture(const FixtureParams& params, const BoxShape& shape);
+		std::weak_ptr<Fixture> CreateAndRegisterFixture(const FixtureParams& params, const ChainShape& shape);
 
 		void RemoveFixture(std::weak_ptr<Fixture> fixture)
 		{
@@ -204,6 +236,18 @@ namespace DeluEngine
 		}
 	};
 
+	export class ChainFixture : public Fixture
+	{
+	public:
+		ChainFixture(gsl::not_null<ECS::Scene*> scene, gsl::not_null<RigidBody*> owner, const FixtureParams& params, const ChainShape& shape) :
+			ECS::SceneAware{ scene },
+			ECS::TransformNode{ {}, owner.get(), ECS::ReparentLogic::KeepLocalTransform },
+			Fixture{ scene, owner, params, shape }
+		{
+
+		}
+	};
+
 	Fixture::Fixture(gsl::not_null<ECS::Scene*> scene, gsl::not_null<RigidBody*> owner, const FixtureParams& params, const CircleShape& shape) :
 		ECS::Object{ scene },
 		ECS::SceneAware{ ECS::VirtualInheritencePassthrough{} },
@@ -230,6 +274,20 @@ namespace DeluEngine
 		b2FixtureUserData data;
 		data.pointer = reinterpret_cast<std::uintptr_t>(this);
 		def.shape = &box;
+		def.userData = data;
+		m_fixture = m_owner->m_body->CreateFixture(&def);
+	}
+
+	Fixture::Fixture(gsl::not_null<ECS::Scene*> scene, gsl::not_null<RigidBody*> owner, const FixtureParams& params, const ChainShape& shape) :
+		ECS::Object{ scene },
+		ECS::SceneAware{ ECS::VirtualInheritencePassthrough{} },
+		m_owner{ owner }
+	{
+		b2FixtureDef def = params;
+		b2ChainShape chain = shape;
+		b2FixtureUserData data;
+		data.pointer = reinterpret_cast<std::uintptr_t>(this);
+		def.shape = &chain;
 		def.userData = data;
 		m_fixture = m_owner->m_body->CreateFixture(&def);
 	}
