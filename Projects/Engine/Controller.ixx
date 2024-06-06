@@ -79,6 +79,8 @@ namespace DeluEngine
 		Up,
 		Down,
 
+		Space,
+
 		Escape
 	};
 
@@ -216,6 +218,9 @@ namespace DeluEngine
 			break;
 		case SDLK_DOWN:
 			key = Down;
+			break;
+		case SDLK_SPACE:
+			key = Space;
 			break;
 
 		default:

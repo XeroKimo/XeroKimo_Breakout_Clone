@@ -149,6 +149,13 @@ namespace DeluEngine
 	export class CircleFixture;
 	export class ChainFixture;
 
+	export struct Collision
+	{
+		RigidBody* otherBody;
+		Fixture* otherFixture;
+		Fixture* myFixture;
+	};
+
 	export class RigidBody : 
 		public virtual ECS::SceneAware, 
 		public virtual ECS::TransformNode
@@ -194,6 +201,19 @@ namespace DeluEngine
 			b2Transform t = m_body->GetTransform();
 			SetWorldPosition(xk::Math::Vector<float, 2>{ t.p.x, t.p.y });
 			SetWorldRotation(xk::Math::Degree<float>{ t.q.GetAngle() });
+		}
+
+		virtual void OnCollisionBegin(Collision collision) {}
+
+	public:
+		void SetVelocity(xk::Math::Vector<float, 2> velocity)
+		{
+			m_body->SetLinearVelocity({ velocity.X(), velocity.Y() });
+		}
+
+		xk::Math::Vector<float, 2> GetVelocity() const
+		{
+			return { m_body->GetLinearVelocity().x, m_body->GetLinearVelocity().y };
 		}
 
 	private:

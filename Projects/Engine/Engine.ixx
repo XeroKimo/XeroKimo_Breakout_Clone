@@ -13,7 +13,7 @@ export module DeluEngine:Engine;
 import :Renderer;
 import :ECS;
 import :Controller;
-//import :Physics;
+import :Physics;
 import :ForwardDeclares;
 import :GUI;
 import SDL2pp;
@@ -160,6 +160,23 @@ namespace DeluEngine
 	void DeluEngine::Box2DCallbacks::BeginContact(b2Contact* contact)
 	{
 		std::cout << "Contact detected\n";
+
+		auto onCollided = [](b2Fixture* a, b2Fixture* b)
+			{
+				DeluEngine::Collision collision;
+
+				collision.otherBody = reinterpret_cast<RigidBody*>(b->GetBody()->GetUserData().pointer);
+				collision.otherFixture = reinterpret_cast<Fixture*>(b->GetUserData().pointer);
+				collision.myFixture = reinterpret_cast<Fixture*>(a->GetUserData().pointer);
+
+				reinterpret_cast<RigidBody*>(a->GetBody()->GetUserData().pointer)->OnCollisionBegin(collision);
+			};
+		auto bodyA = contact->GetFixtureA()->GetBody();
+		auto bodyB = contact->GetFixtureB()->GetBody();
+
+		onCollided(contact->GetFixtureA(), contact->GetFixtureB());
+		onCollided(contact->GetFixtureB(), contact->GetFixtureA());
+
 	}
 	void Box2DCallbacks::EndContact(b2Contact* contact)
 	{
@@ -167,8 +184,11 @@ namespace DeluEngine
 	}
 	void Box2DCallbacks::PreSolve(b2Contact* contact, const b2Manifold* oldManifold)
 	{
+		std::cout << "Pre solve\n";
+
 	}
 	void Box2DCallbacks::PostSolve(b2Contact* contact, const b2ContactImpulse* impulse)
 	{
+		std::cout << "Post solve\n";
 	}
 }
