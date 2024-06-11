@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xkMath", "Projects\xkMath\x
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Breakout", "Projects\Breakout\Breakout.vcxproj", "{D88A4677-3684-4D3E-BF8F-BF8ADCE5F96C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TypedD3D", "TypedD3D\TypedD3D\TypedD3D12.vcxproj", "{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -101,6 +103,14 @@ Global
 		{D88A4677-3684-4D3E-BF8F-BF8ADCE5F96C}.Release|x64.Build.0 = Release|x64
 		{D88A4677-3684-4D3E-BF8F-BF8ADCE5F96C}.Release|x86.ActiveCfg = Release|Win32
 		{D88A4677-3684-4D3E-BF8F-BF8ADCE5F96C}.Release|x86.Build.0 = Release|Win32
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Debug|x64.ActiveCfg = Debug|x64
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Debug|x64.Build.0 = Debug|x64
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Debug|x86.ActiveCfg = Debug|Win32
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Debug|x86.Build.0 = Debug|Win32
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Release|x64.ActiveCfg = Release|x64
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Release|x64.Build.0 = Release|x64
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Release|x86.ActiveCfg = Release|Win32
+		{4C07B140-D4BD-40D4-BE41-18E6AA4D78EF}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
