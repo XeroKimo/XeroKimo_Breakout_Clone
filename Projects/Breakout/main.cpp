@@ -209,6 +209,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 				DeluEngine::gHeart.Pulse();
 				engine.controller.SwapBuffers();
+				engine.experimentalRenderer.ClearBuffer();
 
 				engine.experimentalRenderer.Present();
 				//Render(engine);
