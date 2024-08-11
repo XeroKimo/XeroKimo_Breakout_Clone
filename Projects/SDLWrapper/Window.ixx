@@ -6,12 +6,17 @@ module;
 #include <format>
 #include <stdexcept>
 #include <optional>
+#include <SDL2/SDL_syswm.h>
 #include "MacroHelpers.h"
 
 export module SDL2pp:Window;
 import :Types;
 import :Impl;
 import xk.Math.Matrix;
+
+#ifdef CreateWindow
+#undef CreateWindow
+#endif
 
 namespace SDL2pp
 {
@@ -46,6 +51,17 @@ namespace SDL2pp
 			SDL_GetWindowSize(&Get(), &size.X(), &size.Y());
 			return size;
 		}
+
+#ifdef SDL_VIDEO_DRIVER_WINDOWS
+		HWND GetInternalHandle()
+		{
+			SDL_SysWMinfo info;
+			SDL_GetVersion(&info.version);
+			SDL_GetWindowWMInfo(&Get(), &info);
+
+			return info.info.win.window;
+		}
+#endif
 
 	private:
 		const self_type& GetDerived() const noexcept { return static_cast<const self_type&>(*this); }

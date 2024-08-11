@@ -8,3 +8,4 @@ export import :SpriteComponent;
 export import :Physics;
 export import :GUI;
 export import :Heart;
+export import :ExperimentalRenderer;

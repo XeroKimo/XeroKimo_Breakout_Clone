@@ -8,6 +8,8 @@ module;
 #include <numbers>
 #include <functional>
 #include <box2d/box2d.h>
+#include <d3d11_4.h>
+#include <dxgi1_6.h>
 
 export module DeluEngine:Engine;
 import :Renderer;
@@ -18,6 +20,7 @@ import :ForwardDeclares;
 import :GUI;
 import SDL2pp;
 import xk.Math.Matrix;
+import :ExperimentalRenderer;
 
 namespace DeluEngine
 {
@@ -90,8 +93,9 @@ namespace DeluEngine
 		Box2DCallbacks box2DCallbacks;
 		std::function<void(ECS::Scene&)> queuedScene;
 		ECS::SceneManager sceneManager;
-		bool running = true;
 
+		bool running = true;
+		ExperimentalRenderer experimentalRenderer;
 
 		void ProcessEvent(const SDL2pp::Event& event)
 		{

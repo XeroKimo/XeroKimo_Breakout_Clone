@@ -27,6 +27,8 @@
     <ClCompile Include="ECS.ixx" />
     <ClCompile Include="Engine.ixx" />
     <ClCompile Include="EngineAware.ixx" />
+    <ClCompile Include="ExperimentalRenderer.cpp" />
+    <ClCompile Include="ExperimentalRenderer.ixx" />
     <ClCompile Include="ForwardDeclares.ixx" />
     <ClCompile Include="GUI.cpp" />
     <ClCompile Include="GUI.ixx" />
@@ -37,6 +39,9 @@
     <ClCompile Include="SortedVector.ixx" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\TypedD3D12\TypedD3D\TypedD3D12.vcxproj">
+      <Project>{4c07b140-d4bd-40d4-be41-18e6aa4d78ef}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\ECSLib\ECSLib.vcxproj">
       <Project>{fe5ec745-264a-40d0-a6ce-d73669dcb726}</Project>
     </ProjectReference>

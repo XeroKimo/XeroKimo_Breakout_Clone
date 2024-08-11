@@ -5,12 +5,14 @@
 #include <span>
 #include <SDL2/SDL_mixer.h>
 #include <Windows.h>
-
+#include <dxgi1_6.h>
+#include <Windows.h>
 import DeluEngine;
 import xk.Math.Matrix;
 import DeluGame;
 import SDL2pp;
-
+import TypedD3D11;
+import TypedDXGI;
 #undef main;
 
 using namespace xk::Math::Aliases;
@@ -130,7 +132,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	{
 		.window{ SDL2pp::CreateWindow("Breakout", { 1600, 900 }, SDL2pp::WindowFlag::OpenGL) },
 		.renderer{ engine.window.get() },
-		.sceneManager{ engine, &sceneManagerCallbacks }
+		.sceneManager{ engine, &sceneManagerCallbacks },
+		.experimentalRenderer{ engine.window->GetInternalHandle() }
 	};
 
 	DeluEngine::gHeart.RegisterGroup("Game", 0);
@@ -207,7 +210,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				DeluEngine::gHeart.Pulse();
 				engine.controller.SwapBuffers();
 
-				Render(engine);
+				engine.experimentalRenderer.Present();
+				//Render(engine);
 			}
 			//	////Formerly drawn within a frame
 			//	//SDL_Rect textLocation = { 400, 200, testFontSurface->w, testFontSurface->h };

@@ -63,5 +63,11 @@
     <ClCompile Include="Heart.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ExperimentalRenderer.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ExperimentalRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
