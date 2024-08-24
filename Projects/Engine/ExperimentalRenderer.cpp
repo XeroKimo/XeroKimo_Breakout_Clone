@@ -4,6 +4,9 @@
 #include <tuple>
 #include <d3d11sdklayers.h>
 #include <array>
+#include <span>
+#include <wrl/client.h>
+#include <d3dcompiler.h>
 
 module DeluEngine:ExperimentalRenderer;
 import TypedDXGI;
@@ -36,6 +39,7 @@ namespace DeluEngine
 			nullptr);
 
 		m_debugDevice = TypedD3D::Cast<ID3D11Debug>(m_device.AsComPtr());
+
 		auto backBuffer = m_swapChain->GetBuffer<ID3D11Resource>(0);
 
 		m_backBuffer = m_device->CreateRenderTargetView(backBuffer);
@@ -50,16 +54,156 @@ namespace DeluEngine
 	void ExperimentalRenderer::Draw()
 	{
 		Texture t;
+
+		TypedD3D11::Wrapper<ID3D11Resource> resource;
 	}
 
 	void ExperimentalRenderer::ClearBuffer()
 	{
 		std::array clearColor{ 1.f, 1.f, 1.f, 1.f };
 		m_deviceContext->ClearRenderTargetView(m_backBuffer, clearColor);
+
+		m_deviceContext->OMSetRenderTargets(std::span{ &m_backBuffer, 1 }, nullptr);
 	}
 
 	void ExperimentalRenderer::Present()
 	{
 		m_swapChain->Present(0, 0);
+	}
+
+	ExperimentalSpriteRenderer::ExperimentalSpriteRenderer(TypedD3D11::Wrapper<ID3D11Device> device, TypedD3D11::Wrapper<ID3D11DeviceContext> deviceContext) :
+		m_device{ device },
+		m_deviceContext{ deviceContext }
+	{
+		Microsoft::WRL::ComPtr<ID3DBlob> vertexBlob;
+		TypedD3D::ThrowIfFailed(D3DCompileFromFile(L"../Engine/Shaders/VertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &vertexBlob, nullptr));
+		m_vertexShader = device->CreateVertexShader(*vertexBlob.Get(), nullptr);
+		std::array inputElement
+		{
+			D3D11_INPUT_ELEMENT_DESC{
+				.SemanticName = "Position",
+				.SemanticIndex = 0,
+				.Format = DXGI_FORMAT_R32G32B32_FLOAT,
+				.InputSlot = 0,
+				.AlignedByteOffset = 0,
+				.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+				.InstanceDataStepRate = 0,
+			},
+			D3D11_INPUT_ELEMENT_DESC{
+				.SemanticName = "TexCoord",
+				.SemanticIndex = 0,
+				.Format = DXGI_FORMAT_R32G32_FLOAT,
+				.InputSlot = 0,
+				.AlignedByteOffset = 0,
+				.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+				.InstanceDataStepRate = 0,
+			},
+		};
+
+		m_layout = m_device->CreateInputLayout(inputElement, *vertexBlob.Get());
+
+		Microsoft::WRL::ComPtr<ID3DBlob> pixelBlob;
+		TypedD3D::ThrowIfFailed(D3DCompileFromFile(L"../Engine/Shaders/PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &pixelBlob, nullptr));
+		m_pixelShader = device->CreatePixelShader(*pixelBlob.Get(), nullptr);
+		
+		{
+			D3D11_BUFFER_DESC bufferDesc
+			{
+				.ByteWidth = sizeof(float) * 5 * 6,
+				.Usage = D3D11_USAGE_IMMUTABLE,
+				.BindFlags = D3D11_BIND_VERTEX_BUFFER,
+				.CPUAccessFlags = 0,
+				.MiscFlags = 0,
+				.StructureByteStride = 0
+			};
+
+			struct Vertex
+			{
+				xk::Math::Vector<float, 3> pos;
+				xk::Math::Vector<float, 2> uv;
+			};
+
+			Vertex bl{ { -0.5f, -0.5f}, { 0, 0 } };
+			Vertex tl{ { -0.5f, 0.5f}, { 0, 1 } };
+			Vertex tr{ { 0.5f, 0.5f}, { 1, 1 } };
+			Vertex br{ { 0.5f, -0.5f}, { 1, 0 } };
+
+			std::array<Vertex, 6> vertexData
+			{
+				bl, tl, tr,
+				tr, br, bl
+			};
+
+			D3D11_SUBRESOURCE_DATA data{};
+			data.pSysMem = vertexData.data();
+			m_vertexBuffer = m_device->CreateBuffer(bufferDesc, &data);
+		}
+
+		{
+			D3D11_RASTERIZER_DESC desc
+			{
+				.FillMode = D3D11_FILL_SOLID,
+				.CullMode = D3D11_CULL_BACK,
+				.FrontCounterClockwise = false,
+				.DepthBias = 0,
+				.DepthBiasClamp = 0,
+				.SlopeScaledDepthBias = 0,
+				.DepthClipEnable = true,
+				.ScissorEnable = true,
+				.MultisampleEnable = false,
+				.AntialiasedLineEnable = true
+			};
+			m_rasterizerState = m_device->CreateRasterizerState(desc);
+		}
+	}
+
+	template<std::invocable<D3D11_MAPPED_SUBRESOURCE> Func>
+	void UpdateConstantBuffer(TypedD3D11::Wrapper<ID3D11DeviceContext> context, TypedD3D11::Wrapper<ID3D11Resource> resource, Func func)
+	{
+		D3D11_MAPPED_SUBRESOURCE data = context->Map(resource, 0, D3D11_MAP_WRITE_DISCARD, 0);
+		func(data);
+		context->Unmap(resource, 0);
+	}
+
+	void SpriteRenderInterface::Draw(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, xk::Math::Aliases::Matrix4x4 transform)
+	{
+ 		m_renderer.m_deviceContext->IASetVertexBuffers(0, m_renderer.m_vertexBuffer.Get(), sizeof(float) * 5, 0 );
+		D3D11_VIEWPORT viewports;
+		viewports.TopLeftX = 0;
+		viewports.TopLeftY = 0;
+		viewports.MinDepth = 0;
+		viewports.MaxDepth = 1;
+		viewports.Width = 1600;
+		viewports.Height = 900;
+
+		D3D11_RECT rects;
+		rects.left = 0;
+		rects.top = 0;
+		rects.right = 1600;
+		rects.bottom = 900;
+		m_renderer.m_deviceContext->RSSetViewports({&viewports, 1});
+		//m_renderer.m_deviceContext->RSSetScissorRects({&rects, 1});
+		//m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{&texture, 1});
+
+		//UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+		//	{
+		//		std::memcpy(data.pData, &transform, sizeof(transform));
+		//	});
+		m_renderer.m_deviceContext->VSSetConstantBuffers(0, std::span{ &m_renderer.m_constantBuffer, 1 });
+		m_renderer.m_deviceContext->Draw(6, 0);
+	}
+
+	void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
+	{
+		m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{ &texture, 1 });
+		for(auto& t : transform)
+		{
+			UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+				{
+					std::memcpy(data.pData, &transform, sizeof(transform));
+				});
+			m_renderer.m_deviceContext->VSSetConstantBuffers(0, std::span{ &m_renderer.m_constantBuffer, 1 });
+			m_renderer.m_deviceContext->Draw(6, 0);
+		}
 	}
 }

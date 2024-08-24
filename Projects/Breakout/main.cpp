@@ -164,6 +164,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			engine.physicsWorld.DebugDraw();
 		});
 
+	DeluEngine::ExperimentalSpriteRenderer spriteRenderer{ engine.experimentalRenderer.GetDevice(), engine.experimentalRenderer.GetDeviceContext() };
 	std::chrono::duration<float> physicsAccumulator{ 0.f };
 	while(engine.running)
 	{
@@ -210,7 +211,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				DeluEngine::gHeart.Pulse();
 				engine.controller.SwapBuffers();
 				engine.experimentalRenderer.ClearBuffer();
-
+				spriteRenderer.DrawPass([&](DeluEngine::SpriteRenderInterface renderer)
+				{
+					renderer.Draw(nullptr, {});
+				});
 				engine.experimentalRenderer.Present();
 				//Render(engine);
 			}
