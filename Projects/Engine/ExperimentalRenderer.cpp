@@ -12,8 +12,7 @@ module DeluEngine:ExperimentalRenderer;
 import TypedDXGI;
 import TypedD3D11;
 using namespace TypedD3D;
-using namespace TypedDXGI;
-using namespace TypedD3D11;
+
 namespace DeluEngine
 {
 	ExperimentalRenderer::ExperimentalRenderer(HWND window)
@@ -63,7 +62,7 @@ namespace DeluEngine
 		std::array clearColor{ 1.f, 1.f, 1.f, 1.f };
 		m_deviceContext->ClearRenderTargetView(m_backBuffer, clearColor);
 
-		m_deviceContext->OMSetRenderTargets(std::span{ &m_backBuffer, 1 }, nullptr);
+		m_deviceContext->OMSetRenderTargets(m_backBuffer, nullptr);
 	}
 
 	void ExperimentalRenderer::Present()
@@ -76,6 +75,7 @@ namespace DeluEngine
 		m_deviceContext{ deviceContext }
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> vertexBlob;
+
 		TypedD3D::ThrowIfFailed(D3DCompileFromFile(L"../Engine/Shaders/VertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &vertexBlob, nullptr));
 		m_vertexShader = device->CreateVertexShader(*vertexBlob.Get(), nullptr);
 		std::array inputElement
@@ -155,6 +155,19 @@ namespace DeluEngine
 			};
 			m_rasterizerState = m_device->CreateRasterizerState(desc);
 		}
+
+		{
+			D3D11_BUFFER_DESC bufferDesc
+			{
+				.ByteWidth = sizeof(xk::Math::Aliases::Matrix4x4),
+				.Usage = D3D11_USAGE_DYNAMIC,
+				.BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+				.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+				.MiscFlags = 0,
+				.StructureByteStride = 0
+			};
+			m_constantBuffer = m_device->CreateBuffer(bufferDesc);
+		}
 	}
 
 	template<std::invocable<D3D11_MAPPED_SUBRESOURCE> Func>
@@ -167,7 +180,9 @@ namespace DeluEngine
 
 	void SpriteRenderInterface::Draw(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, xk::Math::Aliases::Matrix4x4 transform)
 	{
- 		m_renderer.m_deviceContext->IASetVertexBuffers(0, m_renderer.m_vertexBuffer.Get(), sizeof(float) * 5, 0 );
+		m_renderer.m_deviceContext->IASetVertexBuffers(0, m_renderer.m_vertexBuffer.Get(), sizeof(float) * 5, 0);
+		m_renderer.m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 		D3D11_VIEWPORT viewports;
 		viewports.TopLeftX = 0;
 		viewports.TopLeftY = 0;
@@ -185,24 +200,24 @@ namespace DeluEngine
 		//m_renderer.m_deviceContext->RSSetScissorRects({&rects, 1});
 		//m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{&texture, 1});
 
-		//UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
-		//	{
-		//		std::memcpy(data.pData, &transform, sizeof(transform));
-		//	});
-		m_renderer.m_deviceContext->VSSetConstantBuffers(0, std::span{ &m_renderer.m_constantBuffer, 1 });
+		UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+		{
+			std::memcpy(data.pData, &transform, sizeof(transform));
+		});
+		m_renderer.m_deviceContext->VSSetConstantBuffers(3, m_renderer.m_constantBuffer);
 		m_renderer.m_deviceContext->Draw(6, 0);
 	}
 
 	void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
 	{
-		m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{ &texture, 1 });
+		m_renderer.m_deviceContext->PSSetShaderResources(0, texture);
 		for(auto& t : transform)
 		{
 			UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
 				{
 					std::memcpy(data.pData, &transform, sizeof(transform));
 				});
-			m_renderer.m_deviceContext->VSSetConstantBuffers(0, std::span{ &m_renderer.m_constantBuffer, 1 });
+			m_renderer.m_deviceContext->VSSetConstantBuffers(0, m_renderer.m_constantBuffer);
 			m_renderer.m_deviceContext->Draw(6, 0);
 		}
 	}

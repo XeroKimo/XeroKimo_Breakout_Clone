@@ -104,6 +104,12 @@ namespace xk::Math
 	template<class Ty1, class Ty2, size_t M, size_t N, size_t M2, bool IsConst1, bool IsConst2>
 	constexpr auto operator*(RowRef<Ty1, M, N, IsConst1> lh, ColumnRef<Ty2, N, M2, IsConst2> rh);
 
+	export enum class MatrixMemoryLayout
+	{
+		Row_Major,
+		Column_Major
+	};
+
 	template<class Ty, size_t M, size_t N>
 	struct Matrix
 	{
@@ -116,7 +122,7 @@ namespace xk::Math
 		using const_reference = const Ty&;
 
 		std::array<value, element_count> _values{};
-
+		static constexpr MatrixMemoryLayout memoryLayout = MatrixMemoryLayout::Column_Major;
 	public:
 		constexpr Matrix() = default;	
 
@@ -131,12 +137,15 @@ namespace xk::Math
 		constexpr Matrix(Ty2... values) :
 			_values({ static_cast<Ty>(values)... })
 		{
-			auto copy = _values;
-			for (size_t i = 0; i < row_count; i++)
+			if constexpr(memoryLayout == MatrixMemoryLayout::Column_Major)
 			{
-				for (size_t j = 0; j < column_count; j++)
+				auto copy = _values;
+				for(size_t i = 0; i < row_count; i++)
 				{
-					_values[ColumnMajorIndex(i, j)] = copy[RowMajorIndex(i, j)];
+					for(size_t j = 0; j < column_count; j++)
+					{
+						_values[ColumnMajorIndex(i, j)] = copy[RowMajorIndex(i, j)];
+					}
 				}
 			}
 		}
@@ -152,8 +161,8 @@ namespace xk::Math
 		}
 
 	public:
-		constexpr reference At(size_t row, size_t column) { return _values[ColumnMajorIndex(row, column)]; }
-		constexpr const_reference At(size_t row, size_t column) const { return _values[ColumnMajorIndex(row, column)]; }
+		constexpr reference At(size_t row, size_t column) { return _values[GetIndex(row, column)]; }
+		constexpr const_reference At(size_t row, size_t column) const { return _values[GetIndex(row, column)]; }
 
 	public:
 		template<class Ty2>
@@ -269,6 +278,12 @@ namespace xk::Math
 
 		operator Ty() const requires (element_count == 1) { return _values[0]; }
 
+		constexpr size_t GetIndex(size_t row, size_t column) const noexcept 
+		{ 
+			return (memoryLayout == MatrixMemoryLayout::Column_Major) ?
+				ColumnMajorIndex(row, column) :
+				RowMajorIndex(row, column);
+		}
 		constexpr size_t ColumnMajorIndex(size_t row, size_t column) const noexcept { return column * row_count + row; }
 		constexpr size_t RowMajorIndex(size_t row, size_t column) const noexcept { return row * column_count + column; }
 	};

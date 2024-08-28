@@ -213,7 +213,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				engine.experimentalRenderer.ClearBuffer();
 				spriteRenderer.DrawPass([&](DeluEngine::SpriteRenderInterface renderer)
 				{
-					renderer.Draw(nullptr, {});
+					renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+						{
+							1, 0, 0, 0,
+							0, 1, 0, 0,
+							0, 0, 1, 0,
+							0, 0, 0, 1
+						});
 				});
 				engine.experimentalRenderer.Present();
 				//Render(engine);
