@@ -390,6 +390,13 @@ namespace xk::Math
 			return lh /= scalar;
 		}
 
+		template<size_t... Index>
+			requires ((Index < ElementCount) && ...) && (sizeof...(Index) < ElementCount)
+		Vector<Ty, sizeof...(Index)> Swizzle()
+		{
+			return { operator[](Index)... };
+		}
+
 	private:
 		using base_type::At;
 	};

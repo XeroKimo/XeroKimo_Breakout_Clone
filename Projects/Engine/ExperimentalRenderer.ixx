@@ -5,6 +5,7 @@ module;
 #include <wrl/client.h>
 #include <d3d11sdklayers.h>
 #include <span>
+#include <concepts>
 
 export module DeluEngine:ExperimentalRenderer;
 import xk.Math.Matrix;
@@ -18,6 +19,14 @@ namespace DeluEngine
 		TypedD3D11::Wrapper<ID3D11Texture2D> texture;
 		TypedD3D11::Wrapper<ID3D11RenderTargetView> rt;
 	};
+
+	export template<std::invocable<D3D11_MAPPED_SUBRESOURCE> Func>
+	void UpdateConstantBuffer(TypedD3D11::Wrapper<ID3D11DeviceContext> context, TypedD3D11::Wrapper<ID3D11Resource> resource, Func func)
+	{
+		D3D11_MAPPED_SUBRESOURCE data = context->Map(resource, 0, D3D11_MAP_WRITE_DISCARD, 0);
+		func(data);
+		context->Unmap(resource, 0);
+	}
 
 	export class ExperimentalRenderer
 	{
@@ -63,6 +72,7 @@ namespace DeluEngine
 		TypedD3D11::Wrapper<ID3D11Device> m_device;
 		TypedD3D11::Wrapper<ID3D11DeviceContext> m_deviceContext;
 		TypedD3D11::Wrapper<ID3D11Buffer> m_constantBuffer;
+		TypedD3D11::Wrapper<ID3D11Buffer> m_cameraBuffer;
 		TypedD3D11::Wrapper<ID3D11Buffer> m_vertexBuffer;
 		TypedD3D11::Wrapper<ID3D11RasterizerState> m_rasterizerState;
 
@@ -71,13 +81,25 @@ namespace DeluEngine
 		TypedD3D11::Wrapper<ID3D11PixelShader> m_pixelShader;
 
 	public:
+		static constexpr UINT VSPerFrameCBufferSlot = 0;
+		static constexpr UINT VSPerCameraCBufferSlot = 1;
+		static constexpr UINT VSPerMaterialCBufferSlot = 2;
+		static constexpr UINT VSPerObjectCBufferSlot = 3;
+
+
+	public:
 		ExperimentalSpriteRenderer(TypedD3D11::Wrapper<ID3D11Device> device, TypedD3D11::Wrapper<ID3D11DeviceContext> deviceContext);
 
 		template<std::invocable<SpriteRenderInterface> Ty>
-		void DrawPass(Ty func)
+		void DrawPass(Ty func, xk::Math::Aliases::Matrix4x4 cameraTransform)
 		{
 			//m_deviceContext->RSSetState(m_rasterizerState);
 			m_deviceContext->IASetInputLayout(m_layout);
+			UpdateConstantBuffer(m_deviceContext, m_cameraBuffer, [&cameraTransform](D3D11_MAPPED_SUBRESOURCE data)
+			{
+				std::memcpy(data.pData, &cameraTransform, sizeof(cameraTransform));
+			});
+			m_deviceContext->VSSetConstantBuffers(VSPerCameraCBufferSlot, m_cameraBuffer);
 			m_deviceContext->VSSetShader(m_vertexShader, {});
 			m_deviceContext->PSSetShader(m_pixelShader, {});
 

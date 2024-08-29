@@ -120,6 +120,41 @@ struct PhysicsPulse : public DeluEngine::PulseCallback
 	}
 };
 
+Matrix4x4 OrthographicProjectionLH(Vector2 resolution, float zNear, float zFar)
+{
+	return Matrix4x4
+	{
+		2 / resolution.X(), 0,      0,                              0,
+		0,      2 / resolution.Y(), 0,                              0,
+		0,      0,     1 / (zFar - zNear),          -zNear / (zFar - zNear),
+		0,      0,      0 , 1
+	};
+}
+
+Matrix4x4 OrthographicProjectionAspectRatioLH(Vector2 aspectRatio, float viewSize, float zNear, float zFar)
+{
+	float x = aspectRatio.X() * viewSize / aspectRatio.Y();
+	float y = viewSize;
+	return Matrix4x4
+	{
+		2 / x, 0,      0,                              0,
+		0,      2 / y, 0,                              0,
+		0,      0,     1 / (zFar - zNear),          -zNear / (zFar - zNear),
+		0,      0,      0 , 1
+	};
+}
+
+Matrix4x4 OrthographicProjectionRH(Vector2 resolution, float zNear, float zFar)
+{
+	return Matrix4x4
+	{
+		2 / resolution.X(), 0,      0,                              0,
+		0,      2 / resolution.Y(), 0,                              0,
+		0,      0,     1 / (zNear - zFar),          zNear / (zNear - zFar),
+		0,      0,      0 , 1
+	};
+}
+
 #ifdef _CONSOLE
 int main()
 #else
@@ -215,12 +250,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				{
 					renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
 						{
-							1, 0, 0, 0,
+							1, 0, 0, 1,
 							0, 1, 0, 0,
-							0, 0, 1, 0,
+							0, 0, 1, 1,
 							0, 0, 0, 1
 						});
-				});
+					renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+						{
+							1, 0, 0, -1,
+							0, 1, 0, 0,
+							0, 0, 1, 1,
+							0, 0, 0, 1
+						});
+				}, OrthographicProjectionAspectRatioLH({ 16, 9 }, 5, 0.0001f, 1000.f));
 				engine.experimentalRenderer.Present();
 				//Render(engine);
 			}

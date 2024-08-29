@@ -70,6 +70,43 @@ namespace DeluEngine
 		m_swapChain->Present(0, 0);
 	}
 
+	struct Vertex
+	{
+		xk::Math::Vector<float, 3> pos;
+		xk::Math::Vector<float, 2> uv;
+	};
+
+	constexpr Vertex bl{ { -0.5f, -0.5f}, { 0, 0 } };
+	constexpr Vertex tl{ { -0.5f, 0.5f}, { 0, 1 } };
+	constexpr Vertex tr{ { 0.5f, 0.5f}, { 1, 1 } };
+	constexpr Vertex br{ { 0.5f, -0.5f}, { 1, 0 } };
+
+	constexpr std::array<Vertex, 6> vertexData
+	{
+		bl, tl, tr,
+		tr, br, bl
+	};
+
+	std::array<Vertex, 6> TransformVertex(xk::Math::Aliases::Matrix4x4 transform)
+	{
+		xk::Math::Aliases::Vector4 blPos = transform * xk::Math::Aliases::Vector4{ -0.5f, -0.5f, 0, 1 };
+		xk::Math::Aliases::Vector4 tlPos = transform * xk::Math::Aliases::Vector4{ -0.5f, 0.5f, 0, 1 };
+		xk::Math::Aliases::Vector4 trPos = transform * xk::Math::Aliases::Vector4{ 0.5f, 0.5f, 0, 1 };
+		xk::Math::Aliases::Vector4 brPos = transform * xk::Math::Aliases::Vector4{ 0.5f, -0.5f, 0, 1 };
+
+		Vertex bl{ blPos.Swizzle<0, 1, 2>(), { 0, 0 } };
+		Vertex tl{ tlPos.Swizzle<0, 1, 2>(), { 0, 1 } };
+		Vertex tr{ trPos.Swizzle<0, 1, 2>(), { 1, 1 } };
+		Vertex br{ brPos.Swizzle<0, 1, 2>(), { 1, 0 } };
+
+		return
+		{
+			bl, tl, tr,
+			tr, br, bl
+		};
+	}
+
+
 	ExperimentalSpriteRenderer::ExperimentalSpriteRenderer(TypedD3D11::Wrapper<ID3D11Device> device, TypedD3D11::Wrapper<ID3D11DeviceContext> deviceContext) :
 		m_device{ device },
 		m_deviceContext{ deviceContext }
@@ -110,33 +147,18 @@ namespace DeluEngine
 			D3D11_BUFFER_DESC bufferDesc
 			{
 				.ByteWidth = sizeof(float) * 5 * 6,
-				.Usage = D3D11_USAGE_IMMUTABLE,
+				.Usage = D3D11_USAGE_DYNAMIC,
 				.BindFlags = D3D11_BIND_VERTEX_BUFFER,
-				.CPUAccessFlags = 0,
+				.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
 				.MiscFlags = 0,
 				.StructureByteStride = 0
 			};
 
-			struct Vertex
-			{
-				xk::Math::Vector<float, 3> pos;
-				xk::Math::Vector<float, 2> uv;
-			};
 
-			Vertex bl{ { -0.5f, -0.5f}, { 0, 0 } };
-			Vertex tl{ { -0.5f, 0.5f}, { 0, 1 } };
-			Vertex tr{ { 0.5f, 0.5f}, { 1, 1 } };
-			Vertex br{ { 0.5f, -0.5f}, { 1, 0 } };
-
-			std::array<Vertex, 6> vertexData
-			{
-				bl, tl, tr,
-				tr, br, bl
-			};
 
 			D3D11_SUBRESOURCE_DATA data{};
 			data.pSysMem = vertexData.data();
-			m_vertexBuffer = m_device->CreateBuffer(bufferDesc, &data);
+			m_vertexBuffer = m_device->CreateBuffer(bufferDesc, nullptr);
 		}
 
 		{
@@ -166,20 +188,18 @@ namespace DeluEngine
 				.MiscFlags = 0,
 				.StructureByteStride = 0
 			};
-			m_constantBuffer = m_device->CreateBuffer(bufferDesc);
+			m_cameraBuffer = m_device->CreateBuffer(bufferDesc);
 		}
-	}
-
-	template<std::invocable<D3D11_MAPPED_SUBRESOURCE> Func>
-	void UpdateConstantBuffer(TypedD3D11::Wrapper<ID3D11DeviceContext> context, TypedD3D11::Wrapper<ID3D11Resource> resource, Func func)
-	{
-		D3D11_MAPPED_SUBRESOURCE data = context->Map(resource, 0, D3D11_MAP_WRITE_DISCARD, 0);
-		func(data);
-		context->Unmap(resource, 0);
 	}
 
 	void SpriteRenderInterface::Draw(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, xk::Math::Aliases::Matrix4x4 transform)
 	{
+		UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_vertexBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+		{
+			auto vertices = TransformVertex(transform);
+			std::memcpy(data.pData, &vertices, sizeof(vertices));
+		});
+
 		m_renderer.m_deviceContext->IASetVertexBuffers(0, m_renderer.m_vertexBuffer.Get(), sizeof(float) * 5, 0);
 		m_renderer.m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -200,25 +220,20 @@ namespace DeluEngine
 		//m_renderer.m_deviceContext->RSSetScissorRects({&rects, 1});
 		//m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{&texture, 1});
 
-		UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
-		{
-			std::memcpy(data.pData, &transform, sizeof(transform));
-		});
-		m_renderer.m_deviceContext->VSSetConstantBuffers(3, m_renderer.m_constantBuffer);
 		m_renderer.m_deviceContext->Draw(6, 0);
 	}
 
-	void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
-	{
-		m_renderer.m_deviceContext->PSSetShaderResources(0, texture);
-		for(auto& t : transform)
-		{
-			UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
-				{
-					std::memcpy(data.pData, &transform, sizeof(transform));
-				});
-			m_renderer.m_deviceContext->VSSetConstantBuffers(0, m_renderer.m_constantBuffer);
-			m_renderer.m_deviceContext->Draw(6, 0);
-		}
-	}
+	//void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
+	//{
+	//	m_renderer.m_deviceContext->PSSetShaderResources(0, texture);
+	//	for(auto& t : transform)
+	//	{
+	//		UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+	//			{
+	//				std::memcpy(data.pData, &transform, sizeof(transform));
+	//			});
+	//		m_renderer.m_deviceContext->VSSetConstantBuffers(0, m_renderer.m_constantBuffer);
+	//		m_renderer.m_deviceContext->Draw(6, 0);
+	//	}
+	//}
 }
