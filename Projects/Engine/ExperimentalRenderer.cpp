@@ -7,8 +7,10 @@
 #include <span>
 #include <wrl/client.h>
 #include <d3dcompiler.h>
-
+#include <cmath>
 module DeluEngine:ExperimentalRenderer;
+import xk.Math.Matrix;
+import xk.Math.Angles;
 import TypedDXGI;
 import TypedD3D11;
 using namespace TypedD3D;
@@ -48,13 +50,6 @@ namespace DeluEngine
 	{
 		if(m_debugDevice)
 			m_debugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
-	}
-
-	void ExperimentalRenderer::Draw()
-	{
-		Texture t;
-
-		TypedD3D11::Wrapper<ID3D11Resource> resource;
 	}
 
 	void ExperimentalRenderer::ClearBuffer()
@@ -107,14 +102,12 @@ namespace DeluEngine
 	}
 
 
-	ExperimentalSpriteRenderer::ExperimentalSpriteRenderer(TypedD3D11::Wrapper<ID3D11Device> device, TypedD3D11::Wrapper<ID3D11DeviceContext> deviceContext) :
-		m_device{ device },
-		m_deviceContext{ deviceContext }
+	ExperimentalSpritePipeline::ExperimentalSpritePipeline(TypedD3D11::Wrapper<ID3D11Device> device, TypedD3D11::Wrapper<ID3D11DeviceContext> deviceContext)
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> vertexBlob;
 
 		TypedD3D::ThrowIfFailed(D3DCompileFromFile(L"../Engine/Shaders/VertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &vertexBlob, nullptr));
-		m_vertexShader = device->CreateVertexShader(*vertexBlob.Get(), nullptr);
+		vertexShader = device->CreateVertexShader(*vertexBlob.Get(), nullptr);
 		std::array inputElement
 		{
 			D3D11_INPUT_ELEMENT_DESC{
@@ -137,11 +130,11 @@ namespace DeluEngine
 			},
 		};
 
-		m_layout = m_device->CreateInputLayout(inputElement, *vertexBlob.Get());
+		layout = device->CreateInputLayout(inputElement, *vertexBlob.Get());
 
 		Microsoft::WRL::ComPtr<ID3DBlob> pixelBlob;
 		TypedD3D::ThrowIfFailed(D3DCompileFromFile(L"../Engine/Shaders/PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &pixelBlob, nullptr));
-		m_pixelShader = device->CreatePixelShader(*pixelBlob.Get(), nullptr);
+		pixelShader = device->CreatePixelShader(*pixelBlob.Get(), nullptr);
 		
 		{
 			D3D11_BUFFER_DESC bufferDesc
@@ -158,7 +151,7 @@ namespace DeluEngine
 
 			D3D11_SUBRESOURCE_DATA data{};
 			data.pSysMem = vertexData.data();
-			m_vertexBuffer = m_device->CreateBuffer(bufferDesc, nullptr);
+			vertexBuffer = device->CreateBuffer(bufferDesc, nullptr);
 		}
 
 		{
@@ -175,7 +168,7 @@ namespace DeluEngine
 				.MultisampleEnable = false,
 				.AntialiasedLineEnable = true
 			};
-			m_rasterizerState = m_device->CreateRasterizerState(desc);
+			rasterizerState = device->CreateRasterizerState(desc);
 		}
 
 		{
@@ -188,39 +181,41 @@ namespace DeluEngine
 				.MiscFlags = 0,
 				.StructureByteStride = 0
 			};
-			m_cameraBuffer = m_device->CreateBuffer(bufferDesc);
+			cameraBuffer = device->CreateBuffer(bufferDesc);
 		}
+	}
+
+	Camera::Camera(xk::Math::Vector<float, 3> position, xk::Math::Degree<float> angle, xk::Math::Matrix<float, 4, 4> perspective) :
+		viewPerspectiveTransform
+		{
+			perspective * xk::Math::Matrix<float, 4, 4> {
+				1, 0, 0, -position.X(),
+				0, 1, 0, -position.Y(),
+				0, 0, 1, -position.Z(),
+				0, 0, 0, 1
+			} * xk::Math::Matrix<float, 4, 4>
+			{
+				std::cos(-xk::Math::Radian<float>(angle)._value), -std::sin(-xk::Math::Radian<float>(angle)._value), 0, 0,
+				std::sin(-xk::Math::Radian<float>(angle)._value), std::cos(-xk::Math::Radian<float>(angle)._value), 0, 0,
+				0, 0, 1, 0,
+				0, 0, 0, 1
+			}
+		}
+	{
+
 	}
 
 	void SpriteRenderInterface::Draw(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, xk::Math::Aliases::Matrix4x4 transform)
 	{
-		UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_vertexBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+		UpdateConstantBuffer(m_renderer.GetDeviceContext(), m_spriteRenderer.vertexBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
 		{
 			auto vertices = TransformVertex(transform);
 			std::memcpy(data.pData, &vertices, sizeof(vertices));
 		});
 
-		m_renderer.m_deviceContext->IASetVertexBuffers(0, m_renderer.m_vertexBuffer.Get(), sizeof(float) * 5, 0);
-		m_renderer.m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		D3D11_VIEWPORT viewports;
-		viewports.TopLeftX = 0;
-		viewports.TopLeftY = 0;
-		viewports.MinDepth = 0;
-		viewports.MaxDepth = 1;
-		viewports.Width = 1600;
-		viewports.Height = 900;
-
-		D3D11_RECT rects;
-		rects.left = 0;
-		rects.top = 0;
-		rects.right = 1600;
-		rects.bottom = 900;
-		m_renderer.m_deviceContext->RSSetViewports({&viewports, 1});
-		//m_renderer.m_deviceContext->RSSetScissorRects({&rects, 1});
+		m_renderer.GetDeviceContext()->IASetVertexBuffers(0, m_spriteRenderer.vertexBuffer, sizeof(float) * 5, 0);
 		//m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{&texture, 1});
-
-		m_renderer.m_deviceContext->Draw(6, 0);
+		m_renderer.GetDeviceContext()->Draw(6, 0);
 	}
 
 	//void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)

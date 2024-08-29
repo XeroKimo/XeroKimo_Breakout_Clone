@@ -199,7 +199,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			engine.physicsWorld.DebugDraw();
 		});
 
-	DeluEngine::ExperimentalSpriteRenderer spriteRenderer{ engine.experimentalRenderer.GetDevice(), engine.experimentalRenderer.GetDeviceContext() };
+	DeluEngine::ExperimentalSpritePipeline spritePipeline{ engine.experimentalRenderer.GetDevice(), engine.experimentalRenderer.GetDeviceContext() };
 	std::chrono::duration<float> physicsAccumulator{ 0.f };
 	while(engine.running)
 	{
@@ -246,23 +246,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				DeluEngine::gHeart.Pulse();
 				engine.controller.SwapBuffers();
 				engine.experimentalRenderer.ClearBuffer();
-				spriteRenderer.DrawPass([&](DeluEngine::SpriteRenderInterface renderer)
+
+				engine.experimentalRenderer.BindPipeline(spritePipeline, [&](DeluEngine::SpriteRenderInterface renderer)
 				{
-					renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
-						{
-							1, 0, 0, 1,
-							0, 1, 0, 0,
-							0, 0, 1, 1,
-							0, 0, 0, 1
-						});
-					renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
-						{
-							1, 0, 0, -1,
-							0, 1, 0, 0,
-							0, 0, 1, 1,
-							0, 0, 0, 1
-						});
-				}, OrthographicProjectionAspectRatioLH({ 16, 9 }, 5, 0.0001f, 1000.f));
+					renderer.CameraPass({ { 1, 0, -1 }, { 45 }  ,OrthographicProjectionAspectRatioLH({ 16, 9 }, 5, 0.000001f, 1000.f) }, [&](DeluEngine::Camera camera)
+					{
+						renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+							{
+								1, 0, 0, 1,
+								0, 1, 0, 0,
+								0, 0, 1, 0,
+								0, 0, 0, 1
+							});
+						renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+							{
+								1, 0, 0, -1,
+								0, 1, 0, 0,
+								0, 0, 1, 0,
+								0, 0, 0, 1
+							});
+					});
+				});
 				engine.experimentalRenderer.Present();
 				//Render(engine);
 			}
