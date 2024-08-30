@@ -71,36 +71,7 @@ namespace DeluEngine
 		xk::Math::Vector<float, 2> uv;
 	};
 
-	constexpr Vertex bl{ { -0.5f, -0.5f}, { 0, 0 } };
-	constexpr Vertex tl{ { -0.5f, 0.5f}, { 0, 1 } };
-	constexpr Vertex tr{ { 0.5f, 0.5f}, { 1, 1 } };
-	constexpr Vertex br{ { 0.5f, -0.5f}, { 1, 0 } };
-
-	constexpr std::array<Vertex, 6> vertexData
-	{
-		bl, tl, tr,
-		tr, br, bl
-	};
-
-	std::array<Vertex, 6> TransformVertex(xk::Math::Aliases::Matrix4x4 transform)
-	{
-		xk::Math::Aliases::Vector4 blPos = transform * xk::Math::Aliases::Vector4{ -0.5f, -0.5f, 0, 1 };
-		xk::Math::Aliases::Vector4 tlPos = transform * xk::Math::Aliases::Vector4{ -0.5f, 0.5f, 0, 1 };
-		xk::Math::Aliases::Vector4 trPos = transform * xk::Math::Aliases::Vector4{ 0.5f, 0.5f, 0, 1 };
-		xk::Math::Aliases::Vector4 brPos = transform * xk::Math::Aliases::Vector4{ 0.5f, -0.5f, 0, 1 };
-
-		Vertex bl{ blPos.Swizzle<0, 1, 2>(), { 0, 0 } };
-		Vertex tl{ tlPos.Swizzle<0, 1, 2>(), { 0, 1 } };
-		Vertex tr{ trPos.Swizzle<0, 1, 2>(), { 1, 1 } };
-		Vertex br{ brPos.Swizzle<0, 1, 2>(), { 1, 0 } };
-
-		return
-		{
-			bl, tl, tr,
-			tr, br, bl
-		};
-	}
-
+	static constexpr size_t instanceBufferElementMaxCount = 256;
 
 	ExperimentalSpritePipeline::ExperimentalSpritePipeline(TypedD3D11::Wrapper<ID3D11Device> device, TypedD3D11::Wrapper<ID3D11DeviceContext> deviceContext)
 	{
@@ -111,7 +82,7 @@ namespace DeluEngine
 		std::array inputElement
 		{
 			D3D11_INPUT_ELEMENT_DESC{
-				.SemanticName = "Position",
+				.SemanticName = "POSITION",
 				.SemanticIndex = 0,
 				.Format = DXGI_FORMAT_R32G32B32_FLOAT,
 				.InputSlot = 0,
@@ -120,13 +91,49 @@ namespace DeluEngine
 				.InstanceDataStepRate = 0,
 			},
 			D3D11_INPUT_ELEMENT_DESC{
-				.SemanticName = "TexCoord",
+				.SemanticName = "TEXCOORD",
 				.SemanticIndex = 0,
 				.Format = DXGI_FORMAT_R32G32_FLOAT,
 				.InputSlot = 0,
-				.AlignedByteOffset = 0,
+				.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
 				.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
 				.InstanceDataStepRate = 0,
+			},
+			D3D11_INPUT_ELEMENT_DESC{
+				.SemanticName = "OBJTRANSFORM",
+				.SemanticIndex = 0,
+				.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+				.InputSlot = 1,
+				.AlignedByteOffset = 0,
+				.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA,
+				.InstanceDataStepRate = 1,
+			},
+			D3D11_INPUT_ELEMENT_DESC{
+				.SemanticName = "ObjTransform",
+				.SemanticIndex = 1,
+				.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+				.InputSlot = 1,
+				.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
+				.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA,
+				.InstanceDataStepRate = 1,
+			},
+			D3D11_INPUT_ELEMENT_DESC{
+				.SemanticName = "ObjTransform",
+				.SemanticIndex = 2,
+				.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+				.InputSlot = 1,
+				.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
+				.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA,
+				.InstanceDataStepRate = 1,
+			},
+			D3D11_INPUT_ELEMENT_DESC{
+				.SemanticName = "ObjTransform",
+				.SemanticIndex = 3,
+				.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+				.InputSlot = 1,
+				.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT,
+				.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA,
+				.InstanceDataStepRate = 1,
 			},
 		};
 
@@ -137,9 +144,37 @@ namespace DeluEngine
 		pixelShader = device->CreatePixelShader(*pixelBlob.Get(), nullptr);
 		
 		{
+
+			constexpr Vertex bl{ { -0.5f, -0.5f}, { 0, 0 } };
+			constexpr Vertex tl{ { -0.5f, 0.5f}, { 0, 1 } };
+			constexpr Vertex tr{ { 0.5f, 0.5f}, { 1, 1 } };
+			constexpr Vertex br{ { 0.5f, -0.5f}, { 1, 0 } };
+
+			constexpr std::array<Vertex, 6> vertexData
+			{
+				bl, tl, tr,
+				tr, br, bl
+			};
+
 			D3D11_BUFFER_DESC bufferDesc
 			{
-				.ByteWidth = sizeof(float) * 5 * 6,
+				.ByteWidth = sizeof(vertexData),
+				.Usage = D3D11_USAGE_IMMUTABLE,
+				.BindFlags = D3D11_BIND_VERTEX_BUFFER,
+				.CPUAccessFlags = 0,
+				.MiscFlags = 0,
+				.StructureByteStride = 0
+			};
+
+
+			D3D11_SUBRESOURCE_DATA data{};
+			data.pSysMem = vertexData.data();
+			vertexBuffer = device->CreateBuffer(bufferDesc, &data);
+		}
+		{
+			D3D11_BUFFER_DESC bufferDesc
+			{
+				.ByteWidth = sizeof(xk::Math::Aliases::Matrix4x4) * instanceBufferElementMaxCount,
 				.Usage = D3D11_USAGE_DYNAMIC,
 				.BindFlags = D3D11_BIND_VERTEX_BUFFER,
 				.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
@@ -147,11 +182,7 @@ namespace DeluEngine
 				.StructureByteStride = 0
 			};
 
-
-
-			D3D11_SUBRESOURCE_DATA data{};
-			data.pSysMem = vertexData.data();
-			vertexBuffer = device->CreateBuffer(bufferDesc, nullptr);
+			instanceBuffer = device->CreateBuffer(bufferDesc, nullptr);
 		}
 
 		{
@@ -207,28 +238,37 @@ namespace DeluEngine
 
 	void SpriteRenderInterface::Draw(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, xk::Math::Aliases::Matrix4x4 transform)
 	{
-		UpdateConstantBuffer(m_renderer.GetDeviceContext(), m_spriteRenderer.vertexBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
+		UpdateConstantBuffer(m_renderer.GetDeviceContext(), m_spriteRenderer.instanceBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
 		{
-			auto vertices = TransformVertex(transform);
-			std::memcpy(data.pData, &vertices, sizeof(vertices));
+			std::memcpy(data.pData, &transform, sizeof(transform));
 		});
-
-		m_renderer.GetDeviceContext()->IASetVertexBuffers(0, m_spriteRenderer.vertexBuffer, sizeof(float) * 5, 0);
+		TypedD3D::Array<TypedD3D::Wrapper<ID3D11Buffer>, 2> buffers{ m_spriteRenderer.vertexBuffer, m_spriteRenderer.instanceBuffer };
+		std::array<UINT, 2> strides{ sizeof(Vertex), sizeof(xk::Math::Aliases::Matrix4x4) };
+		std::array<UINT, 2> offsets{ 0, 0 };
+		m_renderer.GetDeviceContext()->IASetVertexBuffers(0, { TypedD3D::Span{buffers}, std::span{strides}, std::span{offsets} });
 		//m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{&texture, 1});
-		m_renderer.GetDeviceContext()->Draw(6, 0);
+		m_renderer.GetDeviceContext()->DrawInstanced(6, 1, 0, 0);
 	}
 
-	//void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
-	//{
-	//	m_renderer.m_deviceContext->PSSetShaderResources(0, texture);
-	//	for(auto& t : transform)
-	//	{
-	//		UpdateConstantBuffer(m_renderer.m_deviceContext, m_renderer.m_constantBuffer, [&transform](D3D11_MAPPED_SUBRESOURCE data)
-	//			{
-	//				std::memcpy(data.pData, &transform, sizeof(transform));
-	//			});
-	//		m_renderer.m_deviceContext->VSSetConstantBuffers(0, m_renderer.m_constantBuffer);
-	//		m_renderer.m_deviceContext->Draw(6, 0);
-	//	}
-	//}
+	void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
+	{
+		//m_renderer.m_deviceContext->PSSetShaderResources(0, texture);
+
+		for(size_t i = 0; i < transform.size();)
+		{
+			size_t amountToDraw = transform.size() > instanceBufferElementMaxCount ? instanceBufferElementMaxCount : transform.size();
+			UpdateConstantBuffer(m_renderer.GetDeviceContext(), m_spriteRenderer.instanceBuffer, [&transform, i, amountToDraw](D3D11_MAPPED_SUBRESOURCE data)
+				{
+					std::memcpy(data.pData, &transform[i] , sizeof(xk::Math::Aliases::Matrix4x4) * amountToDraw);
+				});
+
+			TypedD3D::Array<TypedD3D::Wrapper<ID3D11Buffer>, 2> buffers{ m_spriteRenderer.vertexBuffer, m_spriteRenderer.instanceBuffer };
+			std::array<UINT, 2> strides{ sizeof(Vertex), sizeof(xk::Math::Aliases::Matrix4x4) };
+			std::array<UINT, 2> offsets{ 0, 0 };
+			m_renderer.GetDeviceContext()->IASetVertexBuffers(0, { TypedD3D::Span{buffers}, std::span{strides}, std::span{offsets} });
+
+			m_renderer.GetDeviceContext()->DrawInstanced(6, amountToDraw, 0, 0);
+			i += amountToDraw;
+		}
+	}
 }

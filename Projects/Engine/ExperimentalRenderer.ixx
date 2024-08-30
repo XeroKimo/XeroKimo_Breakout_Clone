@@ -23,9 +23,17 @@ namespace DeluEngine
 	};
 
 	export template<std::invocable<D3D11_MAPPED_SUBRESOURCE> Func>
-		void UpdateConstantBuffer(TypedD3D11::Wrapper<ID3D11DeviceContext> context, TypedD3D11::Wrapper<ID3D11Resource> resource, Func func)
+	void UpdateConstantBuffer(TypedD3D11::Wrapper<ID3D11DeviceContext> context, TypedD3D11::Wrapper<ID3D11Resource> resource, Func func)
 	{
 		D3D11_MAPPED_SUBRESOURCE data = context->Map(resource, 0, D3D11_MAP_WRITE_DISCARD, 0);
+		func(data);
+		context->Unmap(resource, 0);
+	}
+
+	export template<std::invocable<D3D11_MAPPED_SUBRESOURCE> Func>
+	void UpdateConstantBufferNoOverwrite(TypedD3D11::Wrapper<ID3D11DeviceContext> context, TypedD3D11::Wrapper<ID3D11Resource> resource, Func func)
+	{
+		D3D11_MAPPED_SUBRESOURCE data = context->Map(resource, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0);
 		func(data);
 		context->Unmap(resource, 0);
 	}
@@ -100,9 +108,9 @@ namespace DeluEngine
 
 	struct ExperimentalSpritePipeline
 	{
-		TypedD3D11::Wrapper<ID3D11Buffer> constantBuffer;
 		TypedD3D11::Wrapper<ID3D11Buffer> cameraBuffer;
 		TypedD3D11::Wrapper<ID3D11Buffer> vertexBuffer;
+		TypedD3D11::Wrapper<ID3D11Buffer> instanceBuffer;
 		TypedD3D11::Wrapper<ID3D11RasterizerState> rasterizerState;
 
 		TypedD3D11::Wrapper<ID3D11InputLayout> layout;

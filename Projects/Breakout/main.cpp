@@ -249,22 +249,41 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 				engine.experimentalRenderer.BindPipeline(spritePipeline, [&](DeluEngine::SpriteRenderInterface renderer)
 				{
-					renderer.CameraPass({ { 1, 0, -1 }, { 45 }  ,OrthographicProjectionAspectRatioLH({ 16, 9 }, 5, 0.000001f, 1000.f) }, [&](DeluEngine::Camera camera)
+					renderer.CameraPass({ { 0, 0, -1 }, { 45 }  ,OrthographicProjectionAspectRatioLH({ 16, 9 }, 5, 0.000001f, 1000.f) }, [&](DeluEngine::Camera camera)
 					{
-						renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+						std::array transforms
+						{
+							xk::Math::Aliases::Matrix4x4
 							{
 								1, 0, 0, 1,
 								0, 1, 0, 0,
 								0, 0, 1, 0,
 								0, 0, 0, 1
-							});
-						renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+							},
+							xk::Math::Aliases::Matrix4x4
 							{
 								1, 0, 0, -1,
 								0, 1, 0, 0,
 								0, 0, 1, 0,
 								0, 0, 0, 1
-							});
+							},
+							xk::Math::Aliases::Matrix4x4
+							{
+								1, 0, 0, 0,
+								0, 1, 0, 1,
+								0, 0, 1, 0,
+								0, 0, 0, 1
+							},
+							xk::Math::Aliases::Matrix4x4
+							{
+								1, 0, 0, 0,
+								0, 1, 0, -1,
+								0, 0, 1, 0,
+								0, 0, 0, 1
+							},
+						};
+
+						renderer.DrawMultiple(nullptr, transforms);
 					});
 				});
 				engine.experimentalRenderer.Present();
