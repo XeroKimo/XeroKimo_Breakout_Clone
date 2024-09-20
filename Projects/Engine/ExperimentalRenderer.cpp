@@ -246,13 +246,13 @@ namespace DeluEngine
 		std::array<UINT, 2> strides{ sizeof(Vertex), sizeof(xk::Math::Aliases::Matrix4x4) };
 		std::array<UINT, 2> offsets{ 0, 0 };
 		m_renderer.GetDeviceContext()->IASetVertexBuffers(0, { TypedD3D::Span{buffers}, std::span{strides}, std::span{offsets} });
-		//m_renderer.m_deviceContext->PSSetShaderResources(0, std::span{&texture, 1});
+		m_renderer.GetDeviceContext()->PSSetShaderResources(0, texture);
 		m_renderer.GetDeviceContext()->DrawInstanced(6, 1, 0, 0);
 	}
 
 	void SpriteRenderInterface::DrawMultiple(TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture, std::span<xk::Math::Aliases::Matrix4x4> transform)
 	{
-		//m_renderer.m_deviceContext->PSSetShaderResources(0, texture);
+		m_renderer.GetDeviceContext()->PSSetShaderResources(0, texture);
 
 		for(size_t i = 0; i < transform.size();)
 		{

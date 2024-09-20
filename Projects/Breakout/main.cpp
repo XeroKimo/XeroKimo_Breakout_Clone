@@ -7,6 +7,9 @@
 #include <Windows.h>
 #include <dxgi1_6.h>
 #include <Windows.h>
+#include <SDL2/SDL_image.h>
+#include <d3d11.h>
+
 import DeluEngine;
 import xk.Math.Matrix;
 import DeluGame;
@@ -201,6 +204,50 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	DeluEngine::ExperimentalSpritePipeline spritePipeline{ engine.experimentalRenderer.GetDevice(), engine.experimentalRenderer.GetDeviceContext() };
 	std::chrono::duration<float> physicsAccumulator{ 0.f };
+
+	SDL_Surface* surface = IMG_Load("Cards/DeluPog.png");
+
+	D3D11_TEXTURE2D_DESC textDesc
+	{
+		.Width = static_cast<UINT>(surface->w),
+		.Height = static_cast<UINT>(surface->h),
+		.MipLevels = 1,
+		.ArraySize = 1,
+		.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+		.SampleDesc = { 1, 0 },
+		.Usage = D3D11_USAGE_DEFAULT, 
+		.BindFlags = D3D11_BIND_SHADER_RESOURCE,
+		.CPUAccessFlags = 0,
+		.MiscFlags = 0
+	};
+
+	{
+		std::unique_ptr<char[]> temp = std::make_unique<char[]>(surface->pitch);
+		char* pixels = reinterpret_cast<char*>(surface->pixels);
+		for(int i = 0; i < surface->h / 2; i++)
+		{
+			char* row1 = &pixels[i * surface->pitch];
+			char* row2 = &pixels[(surface->h - i - 1) * surface->pitch];
+
+			std::memcpy(temp.get(), row1, surface->pitch);
+			std::memcpy(row1, row2, surface->pitch);
+			std::memcpy(row2, temp.get(), surface->pitch);
+		}
+	}
+
+	D3D11_SUBRESOURCE_DATA data{};
+	data.pSysMem = surface->pixels;
+	data.SysMemPitch = surface->pitch;
+	TypedD3D11::Wrapper<ID3D11Texture2D> buffer = engine.experimentalRenderer.GetDevice()->CreateTexture2D(textDesc, &data);
+	D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc
+	{
+		.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+		.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
+		.Texture2D = { 0, 1 }
+	};
+	TypedD3D11::Wrapper<ID3D11ShaderResourceView> texture = engine.experimentalRenderer.GetDevice()->CreateShaderResourceView(buffer, &viewDesc);
+
+	SDL_FreeSurface(surface);
 	while(engine.running)
 	{
 		SDL2pp::Event event;
@@ -249,7 +296,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 				engine.experimentalRenderer.BindPipeline(spritePipeline, [&](DeluEngine::SpriteRenderInterface renderer)
 				{
-					renderer.CameraPass({ { 0, 0, -1 }, { 45 }  ,OrthographicProjectionAspectRatioLH({ 16, 9 }, 5, 0.000001f, 1000.f) }, [&](DeluEngine::Camera camera)
+					renderer.CameraPass({ { 0, 0, -1 }, { 45 }, OrthographicProjectionAspectRatioLH({ 1600, 900 }, 5, 0.000001f, 1000.f) }, [&](DeluEngine::Camera camera)
 					{
 						std::array transforms
 						{
@@ -283,7 +330,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 							},
 						};
 
-						renderer.DrawMultiple(nullptr, transforms);
+						renderer.DrawMultiple(texture, transforms);
+						renderer.Draw(nullptr, xk::Math::Aliases::Matrix4x4
+							{
+								1, 0, 0, -2,
+								0, 1, 0, 0,
+								0, 0, 1, 0,
+								0, 0, 0, 1
+							});
 					});
 				});
 				engine.experimentalRenderer.Present();
